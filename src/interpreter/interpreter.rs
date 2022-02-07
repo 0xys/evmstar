@@ -3,6 +3,9 @@ use num::traits::FromPrimitive;
 
 use crate::model::{
     opcode::OpCode,
+    code::{
+        CodeError
+    }
 };
 use crate::executor::{
     callstack::CallContext,
@@ -29,15 +32,14 @@ impl Interpreter {
         self.apply_resume(resume, &mut context.stack, &mut context.memory);
         
         loop {
-            if let Some(opcode) = context.code.0.get(context.pc) {
-                if let Some(opcode) = OpCode::from_u8(*opcode) {
-                    match self.next_instruction(&opcode, &mut context.stack, &mut context.memory)? {
-                        None => (),
-                        Some(i) => {
-                            return Ok(i)
-                        }
-                    };
-                }
+            let byte = context.code.try_get(context.pc).map_err(|e| InterpreterError::CodeError(e))?;
+            if let Some(opcode) = OpCode::from_u8(byte) {
+                match self.next_instruction(&opcode, &mut context.stack, &mut context.memory)? {
+                    None => (),
+                    Some(i) => {
+                        return Ok(i)
+                    }
+                };
             }
             
             context.pc += 1;
@@ -59,11 +61,8 @@ impl Interpreter {
             OpCode::STOP => Ok(Some(Interrupt::Return)),
 
             OpCode::BALANCE => {
-                let address = stack.pop();
-                if address.is_err() {
-                    return Err(InterpreterError::StackOperationError(address.expect_err("unknown")));
-                }
-                let address = u256_to_address(address.unwrap_or_default());
+                let address = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let address = u256_to_address(address);
                 Ok(Some(Interrupt::Balance(address)))
             }
 
@@ -73,5 +72,6 @@ impl Interpreter {
 }
 
 pub enum InterpreterError {
-    StackOperationError(StackOperationError)
+    StackOperationError(StackOperationError),
+    CodeError(CodeError)
 }
