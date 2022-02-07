@@ -4,9 +4,6 @@ use ethereum_types::U256;
 
 const SIZE: usize = 1024;
 
-/// EVM memory
-pub type Memory = Vec<u8>;
-
 /// EVM stack
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct Stack(pub ArrayVec<U256, SIZE>);
@@ -58,3 +55,31 @@ pub enum StackOperationError {
     StackUnderflow,
     StackOverflow,
 }
+
+/// EVM memory
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct Memory(pub Vec<u8>);
+
+impl Memory {
+    pub fn get(&self, offset: usize) -> u8 {
+        self.0[offset]
+    }
+
+    pub fn get_range<'a>(&'a self, offset: usize, size: usize) -> &'a [u8] {
+        &self.0[offset..offset+size]
+    }
+
+    pub fn set(&mut self, index: usize, value: u8) {
+        self.0[index] = value;
+    }
+
+    pub fn set_range(&mut self, offset: usize, value: &[u8]) {
+        for i in offset..offset + value.len() {
+            self.0[i] = value[i - offset];
+        }
+    }
+}
+
+/// EVM calldata
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct Calldata(pub Vec<u8>);

@@ -8,6 +8,10 @@ impl Code {
         }
         Err(CodeError::Overflow)
     }
+
+    pub fn slice(&self, offset: usize, size: usize) -> &[u8] {
+        &self.0[offset..(offset+size)]
+    }
 }
 
 pub enum CodeError {

@@ -5,7 +5,7 @@ use crate::model::{
     code::Code,
 };
 use crate::interpreter::{
-    stack::{Stack,Memory}
+    stack::{Stack, Memory, Calldata}
 };
 
 #[derive(Clone, Debug)]
@@ -13,9 +13,11 @@ pub struct CallContext {
     pub pc: usize,
     pub stack: Stack,
     pub memory: Memory,
+    pub calldata: Calldata,
     pub code: Code,
     pub sender: Address,
-    pub to: Address
+    pub to: Address,
+    pub origin: Address,
 }
 
 const SIZE: usize = 1024;
