@@ -79,6 +79,7 @@ impl Interpreter {
                 match self.next_instruction(&opcode, &mut context.stack, &mut context.memory)? {
                     None => (),
                     Some(i) => {
+                        context.pc += 1;
                         return Ok(i)
                     }
                 };
