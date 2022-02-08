@@ -8,7 +8,7 @@ use crate::interpreter::{
     stack::{Stack, Memory, Calldata}
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct CallContext {
     pub pc: usize,
     pub stack: Stack,
@@ -23,7 +23,7 @@ pub struct CallContext {
 const SIZE: usize = 1024;
 
 /// evm execution call stack
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct CallStack(pub ArrayVec<CallContext, SIZE>);
 
 impl CallStack {

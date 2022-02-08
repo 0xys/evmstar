@@ -10,6 +10,7 @@ pub type StorageValue = U256;
 pub type LogData = Vec<u8>;
 pub type LogTopics = Vec<U256>;
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum Interrupt {
     AccountExists(Address),
     Balance(Address),

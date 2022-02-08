@@ -25,10 +25,21 @@ use crate::utils::{
     u256_to_address,
 };
 
+#[derive(Clone, Debug)]
 pub struct Interpreter {
     pub pc: usize,
     pub stack: Stack,
     pub revision: Revision,
+}
+
+impl Default for Interpreter {
+    fn default() -> Self {
+        Interpreter {
+            pc: 0,
+            stack: Stack::default(),
+            revision: Revision::Shanghai
+        }
+    }
 }
 
 impl Interpreter {
@@ -338,6 +349,7 @@ impl Interpreter {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum InterpreterError {
     StackOperationError(StackOperationError),
     CodeError(CodeError)

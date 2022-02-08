@@ -1,4 +1,4 @@
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Code(pub Vec<u8>);
 
 impl Code {
@@ -14,6 +14,7 @@ impl Code {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum CodeError {
     Overflow,
 }

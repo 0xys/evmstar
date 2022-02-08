@@ -51,6 +51,7 @@ impl Stack {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum StackOperationError {
     StackUnderflow,
     StackOverflow,
