@@ -91,7 +91,8 @@ impl Interpreter {
             Resume::Init => (),
             Resume::Balance(balance) => {
                 stack.push(balance)
-            }
+            },
+            _ => {}
         }
     }
 
