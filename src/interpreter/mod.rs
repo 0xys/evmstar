@@ -1,5 +1,6 @@
 pub mod interpreter;
 pub mod stack;
+pub mod utils;
 
 use ethereum_types::{
     Address, U256

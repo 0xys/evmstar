@@ -10,6 +10,7 @@ use crate::model::{
         CodeError
     },
     revision::Revision,
+    evmc::StatusCode
 };
 use crate::executor::{
     callstack::CallContext,
@@ -19,10 +20,12 @@ use crate::resume::{
 };
 use crate::interpreter::{
     stack::{Stack, StackOperationError, Memory},
-    Interrupt
+    Interrupt,
+    utils::{exp}
 };
 use crate::utils::{
     u256_to_address,
+    i256::{I256, Sign},
 };
 
 #[derive(Clone, Debug)]
@@ -136,10 +139,12 @@ impl Interpreter {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
 
+                let a = I256::from(a);
+                let b = I256::from(b);
+
                 let ans = a / b;
-                stack.push(ans);
-                panic!("SDIV not defained");
-                // Ok(None)
+                stack.push(ans.into());
+                Ok(None)
             },
             OpCode::MOD => {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
@@ -155,14 +160,17 @@ impl Interpreter {
             OpCode::SMOD => {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+
                 if b.is_zero() {
                     stack.push(U256::zero());
                     return Ok(None);
                 }
+                let a = I256::from(a);
+                let b = I256::from(b);
+
                 let ans = a % b;
-                stack.push(ans);
-                panic!("SMOD not defained");
-                // Ok(None)
+                stack.push(ans.into());
+                Ok(None)
             },
             OpCode::ADDMOD => {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
@@ -201,11 +209,14 @@ impl Interpreter {
                 Ok(None)
             },
             OpCode::EXP => {
-                let base = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let power = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let mut base = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let mut power = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
 
-                panic!("EXP not defained");
-                // Ok(None)
+                let result = exp(&mut base, &mut power, i64::max_value(), Revision::Shanghai)
+                    .map_err(|e| InterpreterError::EvmError(e))?;
+                
+                stack.push(result.0);
+                Ok(None)
             },
             OpCode::SIGNEXTEND => {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
@@ -243,15 +254,19 @@ impl Interpreter {
             OpCode::SLT => {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = I256::from(a);
+                let b = I256::from(b);
+
                 stack.push(if a.lt(&b) { U256::one()} else { U256::zero() });
-                panic!("SLT not implemented");
                 Ok(None)
             },
             OpCode::SGT => {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = I256::from(a);
+                let b = I256::from(b);
+
                 stack.push(if a.gt(&b) { U256::one()} else { U256::zero() });
-                panic!("SGT not implemented");
                 Ok(None)
             },
             OpCode::EQ => {
@@ -335,7 +350,32 @@ impl Interpreter {
                 Ok(None)
             },
             OpCode::SAR => {
-                panic!("SAR not implemented.");
+                let shift = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let value = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let value = I256::from(value);
+
+                let ret = if value == I256::zero() || shift >= U256::from(256) {
+                    match value.0 {
+                        // if value >= 0, pushing 0
+                        Sign::Plus | Sign::Zero => U256::zero(),
+                        // if value < 0, pushing -1
+                        Sign::Minus => I256(Sign::Minus, U256::one()).into(),
+                    }
+                } else {
+                    let shift = shift.as_usize();
+            
+                    match value.0 {
+                        Sign::Plus | Sign::Zero => value.1 >> shift,
+                        Sign::Minus => {
+                            let shifted = ((value.1.overflowing_sub(U256::one()).0) >> shift)
+                                .overflowing_add(U256::one())
+                                .0;
+                            I256(Sign::Minus, shifted).into()
+                        }
+                    }
+                };
+            
+                stack.push(ret);
                 Ok(None)
             }
 
@@ -353,5 +393,6 @@ impl Interpreter {
 #[derive(Clone, Debug)]
 pub enum InterpreterError {
     StackOperationError(StackOperationError),
-    CodeError(CodeError)
+    CodeError(CodeError),
+    EvmError(StatusCode)
 }
