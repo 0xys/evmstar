@@ -53,7 +53,7 @@ impl Interpreter {
     pub fn resume_interpret(&self, resume: Resume, context: &mut CallContext) -> Result<Interrupt, InterpreterError> {
         self.apply_resume(resume, &mut context.stack, &mut context.memory);
         
-        let gas_left = i32::max_value();    // TODO
+        let mut gas_left = i64::max_value();    // TODO
 
         loop {
             // code must stop at STOP, RETURN
@@ -107,7 +107,7 @@ impl Interpreter {
     }
 
     /// interpret next instruction, returning interrupt if needed.
-    fn next_instruction(&self, opcode: &OpCode, stack: &mut Stack, memory: &mut Memory, gas_left: &mut i32) -> Result<Option<Interrupt>, InterpreterError> {
+    fn next_instruction(&self, opcode: &OpCode, stack: &mut Stack, memory: &mut Memory, gas_left: &mut i64) -> Result<Option<Interrupt>, InterpreterError> {
         match opcode {
             OpCode::STOP => {
                 Ok(Some(Interrupt::Return(Bytes::default())))
