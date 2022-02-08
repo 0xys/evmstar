@@ -1,3 +1,5 @@
+pub mod memory;
+
 use ethereum_types::U256;
 
 use crate::model::{

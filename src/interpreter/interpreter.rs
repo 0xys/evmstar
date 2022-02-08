@@ -22,7 +22,10 @@ use crate::resume::{
 use crate::interpreter::{
     stack::{Stack, StackOperationError, Memory},
     Interrupt,
-    utils::{exp}
+    utils::{
+        exp,
+        memory::{mload, mstore, mstore8}
+    },
 };
 use crate::utils::{
     u256_to_address,
@@ -396,7 +399,17 @@ impl Interpreter {
             },
             OpCode::MLOAD => {
                 let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                
+                let gas_consumed = mload(offset, memory, stack, 0).map_err(|e| InterpreterError::EvmError(e))?;
+                Ok(None)
+            },
+            OpCode::MSTORE => {
+                let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let gas_consumed = mstore(offset, memory, stack, 0).map_err(|e| InterpreterError::EvmError(e))?;
+                Ok(None)
+            },
+            OpCode::MSTORE8 => {
+                let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let gas_consumed = mstore8(offset, memory, stack, 0).map_err(|e| InterpreterError::EvmError(e))?;
                 Ok(None)
             }
 

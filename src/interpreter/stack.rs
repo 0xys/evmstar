@@ -61,6 +61,16 @@ pub enum StackOperationError {
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct Memory(pub Vec<u8>);
 
+/// The size of the EVM 256-bit word.
+pub(crate) const WORD_SIZE: i64 = 32;
+pub(crate) const MAX_BUFFER_SIZE: u32 = u32::MAX;
+
+/// Returns number of words what would fit to provided number of bytes,
+/// i.e. it rounds up the number bytes to number of words.
+pub(crate) fn num_words(size_in_bytes: usize) -> i64 {
+    ((size_in_bytes as i64) + (WORD_SIZE - 1)) / WORD_SIZE
+}
+
 impl Memory {
     pub fn get(&self, offset: usize) -> u8 {
         self.0[offset]
@@ -78,6 +88,11 @@ impl Memory {
         for i in offset..offset + value.len() {
             self.0[i] = value[i - offset];
         }
+    }
+
+    /// number of words used to store current load.
+    pub fn num_words(&self) -> i64 {
+        num_words(self.0.len())
     }
 }
 
