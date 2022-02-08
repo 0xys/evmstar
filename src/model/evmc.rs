@@ -36,6 +36,17 @@ impl Default for Output {
     }
 }
 impl Output {
+    pub fn new_success(data: Bytes, gas_left: i64) -> Self {
+        let size = data.len();
+        Output {
+            gas_left: gas_left,
+            status_code: StatusCode::Success,
+            create_address: None,
+            data: data,
+            size: size
+        }
+    }
+
     pub fn default_failure() -> Self {
         Output {
             gas_left: i64::max_value(),

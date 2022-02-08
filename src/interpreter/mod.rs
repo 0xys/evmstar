@@ -5,6 +5,7 @@ pub mod utils;
 use ethereum_types::{
     Address, U256
 };
+use bytes::Bytes;
 
 pub type StorageKey = U256;
 pub type StorageValue = U256;
@@ -26,5 +27,5 @@ pub enum Interrupt {
     AccessAccount(Address),
     AccessStorage(Address, StorageKey),
 
-    Return,
+    Return(Bytes),
 }

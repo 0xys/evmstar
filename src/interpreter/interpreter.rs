@@ -3,6 +3,7 @@ use ethereum_types::{
 };
 use core::convert::TryInto;
 use num::traits::FromPrimitive;
+use bytes::Bytes;
 
 use crate::model::{
     opcode::OpCode,
@@ -103,7 +104,9 @@ impl Interpreter {
     /// interpret next instruction, returning interrupt if needed.
     fn next_instruction(&self, opcode: &OpCode, stack: &mut Stack, memory: &mut Memory) -> Result<Option<Interrupt>, InterpreterError> {
         match opcode {
-            OpCode::STOP => Ok(Some(Interrupt::Return)),
+            OpCode::STOP => {
+                Ok(Some(Interrupt::Return(Bytes::default())))
+            },
             OpCode::ADD => {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
@@ -378,12 +381,31 @@ impl Interpreter {
             
                 stack.push(ret);
                 Ok(None)
-            }
+            },
+
 
             OpCode::BALANCE => {
                 let address = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let address = u256_to_address(address);
                 Ok(Some(Interrupt::Balance(address)))
+            },
+
+            OpCode::POP => {
+                stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                Ok(None)
+            },
+            OpCode::MLOAD => {
+                let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                
+                Ok(None)
+            }
+
+
+            OpCode::RETURN => {
+                let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let size = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = memory.get_range(offset.low_u32() as usize, size.low_u32() as usize);
+                Ok(Some(Interrupt::Return(Bytes::from(a.to_owned()))))
             }
 
             _ => Ok(None)

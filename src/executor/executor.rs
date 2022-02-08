@@ -44,9 +44,12 @@ impl Executor {
             }
             
             let interrupt = interrupt.unwrap();
-            if interrupt == Interrupt::Return {
-                return Output::default();
-            }
+            match interrupt {
+                Interrupt::Return(data) => {
+                    return Output::new_success(data, 0);
+                }
+                _ => ()
+            };
 
             resume = self.handle_interrupt(&interrupt);
         }
