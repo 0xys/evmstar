@@ -401,17 +401,20 @@ impl Interpreter {
             },
             OpCode::MLOAD => {
                 let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let gas_consumed = mload(offset, memory, stack, 0).map_err(|e| InterpreterError::EvmError(e))?;
+                let gas_consumed = mload(offset, memory, stack, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
+                *gas_left -= gas_consumed;
                 Ok(None)
             },
             OpCode::MSTORE => {
                 let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let gas_consumed = mstore(offset, memory, stack, 0).map_err(|e| InterpreterError::EvmError(e))?;
+                let gas_consumed = mstore(offset, memory, stack, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
+                *gas_left -= gas_consumed;
                 Ok(None)
             },
             OpCode::MSTORE8 => {
                 let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let gas_consumed = mstore8(offset, memory, stack, 0).map_err(|e| InterpreterError::EvmError(e))?;
+                let gas_consumed = mstore8(offset, memory, stack, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
+                *gas_left -= gas_consumed;
                 Ok(None)
             }
 
