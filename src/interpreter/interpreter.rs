@@ -70,16 +70,14 @@ impl Interpreter {
                 
                 // handle CODECOPY instruction
                 if opcode == OpCode::CODECOPY {
-                    let dest_offset = context.stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                    let offset = context.stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                    let size = context.stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                    // let dest_offset = context.stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                    // let offset = context.stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                    // let size = context.stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
 
-                    let dest_offset = dest_offset.as_usize();
-                    let offset = offset.as_usize();
-                    let size = size.as_usize();
-                    context.memory.set_range(dest_offset, &context.code.0[offset..offset+size]);
-                    context.pc += 1;
-                    continue;
+                    // let dest_offset = dest_offset.as_usize();
+                    // let offset = offset.as_usize();
+                    // let size = size.as_usize();
+                    panic!("codecopy not implemented");
                 }
 
                 match self.next_instruction(&opcode, &mut context.stack, &mut context.memory, &mut gas_left)? {
