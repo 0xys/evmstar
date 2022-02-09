@@ -469,7 +469,7 @@ impl Interpreter {
             | OpCode::DUP15
             | OpCode::DUP16 => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let offset = opcode.to_usize() - OpCode::DUP1.to_usize() + 1;
+                let offset = opcode.to_usize() - OpCode::DUP1.to_usize();
                 let item = stack.peek_at(offset).map_err(|e| InterpreterError::StackOperationError(e))?;
                 stack.push(item);
                 Ok(None)

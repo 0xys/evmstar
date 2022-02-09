@@ -35,7 +35,7 @@ impl Stack {
         if self.is_empty() || self.0.len() <= offset {
             return Err(StackOperationError::StackOverflow)
         }
-        Ok(self.0[self.0.len() - offset + 1])
+        Ok(self.0[self.0.len() - 1 - offset])
     }
 
     pub fn pop(&mut self) -> Result<U256, StackOperationError> {
