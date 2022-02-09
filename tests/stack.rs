@@ -219,3 +219,36 @@ pub fn test_dup_overflow() {
     };
     assert_eq!(true, result);
 }
+
+#[test]
+pub fn test_swap2swap3() {
+    let host = TransientHost::new();
+    let mut executor = Executor::new(Box::new(host));
+    let mut builder = Code::builder();
+
+    let code = builder
+        .append_opcode(OpCode::PUSH1)
+        .append(&[0x02])
+        .append_opcode(OpCode::PUSH1)
+        .append(&[0x03])
+        .append_opcode(OpCode::PUSH1)
+        .append(&[0x04])
+        .append_opcode(OpCode::PUSH1)
+        .append(&[0x05])
+        .append_opcode(OpCode::PUSH1)
+        .append(&[0x06])
+        .append_opcode(OpCode::SWAP2)
+        .append_opcode(OpCode::SWAP3)
+        .append_opcode(OpCode::MSTORE)
+        .append_opcode(OpCode::PUSH1)
+        .append(&[0x40])
+        .append_opcode(OpCode::PUSH1)
+        .append(&[0x00])
+        .append_opcode(OpCode::RETURN);
+    
+    let output = executor.execute_raw(&code);
+    let memory = decode("00000000000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000").unwrap();
+
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(memory), output.data);
+}
