@@ -57,7 +57,6 @@ impl Interpreter {
         loop {
             // code must stop at STOP, RETURN
             let byte = context.code.try_get(context.pc).map_err(|e| InterpreterError::CodeError(e))?;            
-            println!("- {}: {}", context.pc, byte);
             
             if let Some(opcode) = OpCode::from_u8(byte) {
 
@@ -109,7 +108,6 @@ impl Interpreter {
 
     /// interpret next instruction, returning interrupt if needed.
     fn next_instruction(&self, opcode: &OpCode, stack: &mut Stack, memory: &mut Memory, gas_left: &mut i64) -> Result<Option<Interrupt>, InterpreterError> {
-        println!(" = {:?}", opcode);
         match opcode {
             OpCode::STOP => {
                 Ok(Some(Interrupt::Return(*gas_left, Bytes::default())))
