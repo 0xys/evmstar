@@ -51,7 +51,7 @@ impl Stack {
         }
 
         let top_index = self.0.len() - 1;
-        let index = self.len() - index + 1;
+        let index = self.0.len() - 1 - index;
         self.0.swap(index, top_index);
 
         Ok(())
