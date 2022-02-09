@@ -1,6 +1,4 @@
 
-use num::traits::FromPrimitive;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum OpCode {
@@ -176,23 +174,20 @@ impl OpCode {
         }
         None
     }
-}
 
-impl FromPrimitive for OpCode {
-    fn from_i64(n: i64) -> Option<OpCode> {
-        match n {
-            0x00 => Some(OpCode::STOP),
-            0x01 => Some(OpCode::ADD),
-            0x02 => Some(OpCode::MUL),
-            _ => None,
-        }
-    }
-    fn from_u64(n: u64) -> Option<OpCode> {
-        match n {
-            0x00 => Some(OpCode::STOP),
-            0x01 => Some(OpCode::ADD),
-            0x02 => Some(OpCode::MUL),
-            _ => None,
-        }
+    pub fn from_u8(n: u8) -> Option<OpCode> {
+        if (n <= 0x0b)
+            || (0x10 <= n && n <= 0x1d)
+            || n == 0x20
+            || (0x30 <= n && n <= 0x48)
+            || (0x50 <= n && n <= 0x5b)
+            || (0x60 <= n && n <= 0xa4)
+            || (0xf0 <= n && n <= 0xf5)
+            || (0xfd <= n)
+            {
+            Some(unsafe { std::mem::transmute(n)})
+        }else{
+            None
+        } 
     }
 }
