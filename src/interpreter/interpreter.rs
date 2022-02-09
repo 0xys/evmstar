@@ -2,7 +2,6 @@ use ethereum_types::{
     U256, U512
 };
 use core::convert::TryInto;
-use num::traits::FromPrimitive;
 use bytes::Bytes;
 
 use crate::model::{
@@ -58,6 +57,7 @@ impl Interpreter {
         loop {
             // code must stop at STOP, RETURN
             let byte = context.code.try_get(context.pc).map_err(|e| InterpreterError::CodeError(e))?;            
+            
             if let Some(opcode) = OpCode::from_u8(byte) {
 
                 // handle PUSH instruction
@@ -469,7 +469,7 @@ impl Interpreter {
             | OpCode::DUP15
             | OpCode::DUP16 => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let offset = opcode.to_usize() - OpCode::DUP1.to_usize() + 1;
+                let offset = opcode.to_usize() - OpCode::DUP1.to_usize();
                 let item = stack.peek_at(offset).map_err(|e| InterpreterError::StackOperationError(e))?;
                 stack.push(item);
                 Ok(None)
