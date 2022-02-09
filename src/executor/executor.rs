@@ -19,7 +19,7 @@ pub struct Executor {
 
 impl Executor {
     pub fn new(host: Box<dyn Host>) -> Self {
-        Executor {
+        Self {
             host: host,
             interpreter: Interpreter::default(),
             callstack: CallStack::default(),
