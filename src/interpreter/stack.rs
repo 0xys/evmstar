@@ -80,6 +80,11 @@ impl Memory {
         &self.0[offset..offset+size]
     }
 
+    pub fn get_word(&self, offset: usize) -> U256 {
+        let word = self.get_range(offset, WORD_SIZE as usize);
+        U256::from_big_endian(word)
+    }
+
     pub fn set(&mut self, index: usize, value: u8) {
         self.0[index] = value;
     }
