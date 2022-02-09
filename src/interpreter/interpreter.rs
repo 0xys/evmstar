@@ -41,7 +41,7 @@ pub struct Interpreter {
 
 impl Default for Interpreter {
     fn default() -> Self {
-        Interpreter {
+        Self {
             pc: 0,
             stack: Stack::default(),
             revision: Revision::Shanghai
