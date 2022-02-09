@@ -422,9 +422,52 @@ impl Interpreter {
                 stack.push(len);
                 *gas_left -= 2;
                 Ok(None)
-            }
+            },
             
             // PUSH instruction is already handled in `resume_interpret()`
+
+            OpCode::DUP1
+            | OpCode::DUP2
+            | OpCode::DUP3
+            | OpCode::DUP4
+            | OpCode::DUP5
+            | OpCode::DUP6
+            | OpCode::DUP7
+            | OpCode::DUP8
+            | OpCode::DUP9
+            | OpCode::DUP10
+            | OpCode::DUP11
+            | OpCode::DUP12
+            | OpCode::DUP13
+            | OpCode::DUP14
+            | OpCode::DUP15
+            | OpCode::DUP16 => {
+                let offset = opcode.to_usize() - OpCode::DUP1.to_usize() + 1;
+                let item = stack.peek_at(offset).map_err(|e| InterpreterError::StackOperationError(e))?;
+                stack.push(item);
+                Ok(None)
+            },
+
+            OpCode::SWAP1
+            | OpCode::SWAP2
+            | OpCode::SWAP3
+            | OpCode::SWAP4
+            | OpCode::SWAP5
+            | OpCode::SWAP6
+            | OpCode::SWAP7
+            | OpCode::SWAP8
+            | OpCode::SWAP9
+            | OpCode::SWAP10
+            | OpCode::SWAP11
+            | OpCode::SWAP12
+            | OpCode::SWAP13
+            | OpCode::SWAP14
+            | OpCode::SWAP15
+            | OpCode::SWAP16 => {
+                let offset = opcode.to_usize() - OpCode::SWAP1.to_usize() + 1;
+                stack.swap(offset).map_err(|e| InterpreterError::StackOperationError(e))?;
+                Ok(None)
+            },
 
             OpCode::RETURN => {
                 let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;

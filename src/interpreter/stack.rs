@@ -31,6 +31,13 @@ impl Stack {
         Ok(self.0[self.0.len() - 1])
     }
 
+    pub fn peek_at(&self, offset: usize) -> Result<U256, StackOperationError> {
+        if self.is_empty() || self.0.len() <= offset {
+            return Err(StackOperationError::StackOverflow)
+        }
+        Ok(self.0[self.0.len() - offset + 1])
+    }
+
     pub fn pop(&mut self) -> Result<U256, StackOperationError> {
         if let Some(top) = self.0.pop() {
             return Ok(top);
@@ -39,7 +46,7 @@ impl Stack {
     }
 
     pub fn swap(&mut self, index: usize) -> Result<(), StackOperationError> {
-        if index >= self.0.len() {
+        if self.is_empty() || index >= self.0.len() {
             return Err(StackOperationError::StackOverflow);
         }
 
