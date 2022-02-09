@@ -444,9 +444,9 @@ impl Interpreter {
                 Ok(None)
             },
             OpCode::MSIZE => {
+                Self::consume_constant_gas(gas_left, 2)?;
                 let len = U256::from(memory.0.len());
                 stack.push(len);
-                *gas_left -= 2;
                 Ok(None)
             },
             
