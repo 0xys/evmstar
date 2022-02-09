@@ -24,7 +24,7 @@ use crate::interpreter::{
     Interrupt,
     utils::{
         exp,
-        memory::{mload, mstore, mstore8}
+        memory::{mload, mstore, mstore8, ret}
     },
 };
 use crate::utils::{
@@ -410,7 +410,7 @@ impl Interpreter {
                 let gas_consumed = mstore(offset, memory, stack, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
                 *gas_left -= gas_consumed;
                 Ok(None)
-            },
+            }, 
             OpCode::MSTORE8 => {
                 let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let gas_consumed = mstore8(offset, memory, stack, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
@@ -429,8 +429,9 @@ impl Interpreter {
             OpCode::RETURN => {
                 let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let size = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let a = memory.get_range(offset.low_u32() as usize, size.low_u32() as usize);
-                Ok(Some(Interrupt::Return(Bytes::from(a.to_owned()))))
+                let (gas_consumed, data) = ret(offset, size, memory, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
+                *gas_left -= gas_consumed;
+                Ok(Some(Interrupt::Return(data)))
             }
 
             _ => Ok(None)

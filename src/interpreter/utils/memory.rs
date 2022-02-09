@@ -1,4 +1,5 @@
 use ethereum_types::U256;
+use bytes::Bytes;
 
 use crate::interpreter::stack::{
     Memory, Stack, num_words, MAX_BUFFER_SIZE, WORD_SIZE
@@ -56,6 +57,28 @@ pub fn mstore8(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i
     memory.set(offset, (top.low_u32() & 0xff) as u8);
 
     Ok(gas_consumed)
+}
+
+/// return value of `size` at `offset` in memory.
+/// it incurs memory expansion cost.
+pub fn ret(offset: U256, size: U256, memory: &mut Memory, gas_left: i64) -> Result<(i64, Bytes), StatusCode> {
+    if offset > U256::from(MAX_BUFFER_SIZE) {
+        return Err(StatusCode::Failure(FailureKind::ArgumentOutOfRange));
+    }
+    let offset = offset.as_usize();
+
+    if size.is_zero() {
+        return Ok((0, Bytes::default()));
+    }
+    if size > U256::from(MAX_BUFFER_SIZE) {
+        return Err(StatusCode::Failure(FailureKind::ArgumentOutOfRange));
+    }
+    let size = size.as_usize();
+
+    let gas_consumed = try_expand_memory(offset, size, memory, gas_left)?;
+    let data = memory.get_range(offset, size);
+
+    Ok((gas_consumed, Bytes::from(data.to_owned())))
 }
 
 fn try_expand_memory(offset: usize, size: usize, memory: &mut Memory, gas_left: i64) -> Result<i64, StatusCode> {
