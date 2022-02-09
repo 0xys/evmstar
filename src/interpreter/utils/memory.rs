@@ -81,12 +81,14 @@ pub fn ret(offset: U256, size: U256, memory: &mut Memory, gas_left: i64) -> Resu
     Ok((gas_consumed, Bytes::from(data.to_owned())))
 }
 
+/// memory is resized as needed and calculate memory expansion cost.
+/// 
 fn try_expand_memory(offset: usize, size: usize, memory: &mut Memory, gas_left: i64) -> Result<i64, StatusCode> {
     let new_size = offset + size;
     let current_size: usize = memory.0.len();
 
     if current_size >= new_size {
-        return Ok(0i64);    // resize didn't occur. no gas.
+        return Ok(0i64);    // resize doesn't occur. no gas.
     }
 
     let new_num_of_words = num_words(new_size);
