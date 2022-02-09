@@ -85,3 +85,85 @@ fn try_expand_memory(offset: usize, size: usize, memory: &mut Memory, gas_left: 
 fn func_326(num_of_words: i64) -> i64 {
     G_MEMORY * num_of_words + num_of_words*num_of_words/512
 }
+
+#[test]
+fn test_memory_expansion(){
+    {
+        let offset = 0;
+        let size = 1;
+        let mut memory = Memory::default();
+        let gas_left = i64::max_value();
+    
+        let result = try_expand_memory(offset, size, &mut memory, gas_left);
+        assert_eq!(true, result.is_ok());
+        let gas_consumed = result.unwrap();
+        assert_eq!(3, gas_consumed);
+        assert_eq!(32, memory.0.len())
+    }
+
+    {
+        let offset = 31;
+        let size = 1;
+        let mut memory = Memory::default();
+        let gas_left = i64::max_value();
+    
+        let result = try_expand_memory(offset, size, &mut memory, gas_left);
+        assert_eq!(true, result.is_ok());
+        let gas_consumed = result.unwrap();
+        assert_eq!(3, gas_consumed);
+        assert_eq!(32, memory.0.len())
+    }
+
+    {
+        let offset = 31;
+        let size = 2;
+        let mut memory = Memory::default();
+        let gas_left = i64::max_value();
+    
+        let result = try_expand_memory(offset, size, &mut memory, gas_left);
+        assert_eq!(true, result.is_ok());
+        let gas_consumed = result.unwrap();
+        assert_eq!(6, gas_consumed);
+        assert_eq!(32*2, memory.0.len())
+    }
+
+    {   // no expansion
+        let mut memory = Memory::default();
+        memory.0.resize((10 * WORD_SIZE) as usize, Default::default());
+
+        let offset = 0;
+        let size = 2;
+        let gas_left = i64::max_value();
+    
+        let result = try_expand_memory(offset, size, &mut memory, gas_left);
+        assert_eq!(true, result.is_ok());
+        let gas_consumed = result.unwrap();
+        assert_eq!(0, gas_consumed);
+        assert_eq!((10 * WORD_SIZE) as usize, memory.0.len())
+    }
+
+    {
+        let offset = 600;
+        let size = 1200;
+        let mut memory = Memory::default();
+        let gas_left = i64::max_value();
+    
+        let result = try_expand_memory(offset, size, &mut memory, gas_left);
+        assert_eq!(true, result.is_ok());
+        let gas_consumed = result.unwrap();
+        let num_of_words = (offset + size + WORD_SIZE as usize) as i64 / WORD_SIZE;
+        let expected = 177;
+        assert_eq!(expected, gas_consumed);
+        assert_eq!((num_of_words * WORD_SIZE) as usize, memory.0.len())
+    }
+
+    {   // not enough gas
+        let offset = 600;
+        let size = 1200;
+        let mut memory = Memory::default();
+        let gas_left = 176;
+    
+        let result = try_expand_memory(offset, size, &mut memory, gas_left);
+        assert_eq!(false, result.is_ok());
+    }
+}
