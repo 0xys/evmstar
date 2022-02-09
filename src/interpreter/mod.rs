@@ -27,5 +27,5 @@ pub enum Interrupt {
     AccessAccount(Address),
     AccessStorage(Address, StorageKey),
 
-    Return(Bytes),
+    Return(i64, Bytes),
 }

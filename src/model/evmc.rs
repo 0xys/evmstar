@@ -36,7 +36,7 @@ impl Default for Output {
     }
 }
 impl Output {
-    pub fn new_success(data: Bytes, gas_left: i64) -> Self {
+    pub fn new_success(gas_left: i64, data: Bytes) -> Self {
         let size = data.len();
         Output {
             gas_left: gas_left,

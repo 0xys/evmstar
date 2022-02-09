@@ -1,5 +1,3 @@
-use ethereum_types::{Address, U256};
-
 use crate::host::Host;
 use crate::executor::callstack::{CallStack, CallContext};
 use crate::interpreter::{
@@ -12,7 +10,7 @@ use crate::model::{
     evmc::*,
     code::Code,
 };
-
+#[allow(dead_code)]
 pub struct Executor {
     host: Box<dyn Host>,
     interpreter: Interpreter,
@@ -45,8 +43,8 @@ impl Executor {
             
             let interrupt = interrupt.unwrap();
             match interrupt {
-                Interrupt::Return(data) => {
-                    return Output::new_success(data, 0);
+                Interrupt::Return(gas_left, data) => {
+                    return Output::new_success(gas_left, data);
                 }
                 _ => ()
             };

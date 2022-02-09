@@ -7,20 +7,22 @@ use crate::model::{
     revision::Revision,
 };
 
-pub fn exp(base: &mut U256, power: &mut U256, gas_left: i64, revision: Revision) -> Result<(U256, i64), StatusCode> {
-    if !power.is_zero() {
+pub fn exp(base: &mut U256, power: &mut U256, gas_left: i64, revision: Revision) -> Result<(i64, U256), StatusCode> {
+    let gas_consumed = if !power.is_zero() {
         let additional_gas = if revision >= Revision::Spurious {
-            50
+            50i64
         } else {
             10
-        } * (log2floor(*power) / 8 + 1);
+        } * ((log2floor(*power) / 8 + 1) as i64);
 
-        let gas_left = gas_left - additional_gas as i64;
-
-        if gas_left < 0 {
+        if gas_left - (additional_gas as i64) < 0 {
             return Err(StatusCode::Failure(FailureKind::OutOfGas));
         }
-    }
+
+        additional_gas
+    }else{
+        0i64
+    };
 
     let mut v = U256::one();
 
@@ -32,7 +34,7 @@ pub fn exp(base: &mut U256, power: &mut U256, gas_left: i64, revision: Revision)
         *base = (*base).overflowing_mul(*base).0;
     }
 
-    Ok((v, gas_left))
+    Ok((gas_consumed, v))
 }
 
 fn log2floor(value: U256) -> u64 {
