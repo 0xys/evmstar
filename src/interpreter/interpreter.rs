@@ -416,8 +416,15 @@ impl Interpreter {
                 let gas_consumed = mstore8(offset, memory, stack, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
                 *gas_left -= gas_consumed;
                 Ok(None)
+            },
+            OpCode::MSIZE => {
+                let len = U256::from(memory.0.len());
+                stack.push(len);
+                *gas_left -= 2;
+                Ok(None)
             }
-
+            
+            // PUSH instruction is already handled in `resume_interpret()`
 
             OpCode::RETURN => {
                 let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;

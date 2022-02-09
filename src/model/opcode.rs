@@ -172,7 +172,7 @@ impl OpCode {
     pub const fn is_push(self) -> Option<usize> {
         let opcode_u8 = self.to_u8();
         if OpCode::PUSH1.to_u8() <= opcode_u8 && opcode_u8 <= OpCode::PUSH32.to_u8() {
-            return Some(opcode_u8 as usize);
+            return Some((opcode_u8 - OpCode::PUSH1.to_u8() + 1) as usize);
         }
         None
     }
