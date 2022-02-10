@@ -27,7 +27,6 @@ use crate::interpreter::{
     },
 };
 use crate::utils::{
-    u256_to_address,
     i256::{I256, Sign},
 };
 
