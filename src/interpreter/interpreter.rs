@@ -413,31 +413,27 @@ impl Interpreter {
                 Ok(None)
             },
 
-
-            OpCode::BALANCE => {
-                let address = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let address = u256_to_address(address);
-                Ok(Some(Interrupt::Balance(address)))
-            },
-
             OpCode::POP => {
                 Self::consume_constant_gas(gas_left, 2)?;
                 stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 Ok(None)
             },
             OpCode::MLOAD => {
+                Self::consume_constant_gas(gas_left, 3)?;
                 let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let gas_consumed = mload(offset, memory, stack, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
                 *gas_left -= gas_consumed;
                 Ok(None)
             },
             OpCode::MSTORE => {
+                Self::consume_constant_gas(gas_left, 3)?;
                 let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let gas_consumed = mstore(offset, memory, stack, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
                 *gas_left -= gas_consumed;
                 Ok(None)
             }, 
             OpCode::MSTORE8 => {
+                Self::consume_constant_gas(gas_left, 3)?;
                 let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let gas_consumed = mstore8(offset, memory, stack, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
                 *gas_left -= gas_consumed;

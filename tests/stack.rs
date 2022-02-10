@@ -13,6 +13,10 @@ use evmstar::model::{
 
 use hex::{decode};
 
+fn consumed_gas(amount: i64) -> i64 {
+    i64::max_value() - amount
+}
+
 #[test]
 pub fn test_push() {
     let host = TransientHost::new();
@@ -35,30 +39,57 @@ pub fn test_push() {
 
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::from(vec![0xff]), output.data);
+    assert_eq!(consumed_gas(18), output.gas_left);
 }
 
 #[test]
 pub fn test_push2() {
-    let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
-    let mut builder = Code::builder();
-
-    let code = builder
-        .append_opcode(OpCode::PUSH2)
-        .append(&[0x11,0x22])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x02])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[30])
-        .append_opcode(OpCode::RETURN);
+    {
+        let host = TransientHost::new();
+        let mut executor = Executor::new(Box::new(host));
+        let mut builder = Code::builder();
     
-    let output = executor.execute_raw(&code);
-
-    assert_eq!(StatusCode::Success, output.status_code);
-    assert_eq!(Bytes::from(vec![0x11, 0x22]), output.data);
+        let code = builder
+            .append_opcode(OpCode::PUSH2)
+            .append(&[0x11,0x22])
+            .append_opcode(OpCode::PUSH1)
+            .append(&[0x00])
+            .append_opcode(OpCode::MSTORE)
+            .append_opcode(OpCode::PUSH1)
+            .append(&[0x02])
+            .append_opcode(OpCode::PUSH1)
+            .append(&[30])
+            .append_opcode(OpCode::RETURN);
+        
+        let output = executor.execute_raw(&code);
+    
+        assert_eq!(StatusCode::Success, output.status_code);
+        assert_eq!(Bytes::from(vec![0x11, 0x22]), output.data);
+        assert_eq!(consumed_gas(18), output.gas_left);
+    }
+    {
+        let host = TransientHost::new();
+        let mut executor = Executor::new(Box::new(host));
+        let mut builder = Code::builder();
+    
+        let code = builder
+            .append_opcode(OpCode::PUSH2)
+            .append(&[0x11,0x22])
+            .append_opcode(OpCode::PUSH1)
+            .append(&[0x00])
+            .append_opcode(OpCode::MSTORE)
+            .append_opcode(OpCode::PUSH1)
+            .append(&[0x02])
+            .append_opcode(OpCode::PUSH1)
+            .append(&[31])      // cause memory expansion
+            .append_opcode(OpCode::RETURN);
+        
+        let output = executor.execute_raw(&code);
+    
+        assert_eq!(StatusCode::Success, output.status_code);
+        assert_eq!(Bytes::from(vec![0x22, 0x00]), output.data);
+        assert_eq!(consumed_gas(21), output.gas_left);
+    }
 }
 
 #[test]
@@ -85,6 +116,7 @@ pub fn test_push32() {
 
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::from(data), output.data);
+    assert_eq!(consumed_gas(18), output.gas_left);
 }
 
 #[test]
@@ -112,6 +144,7 @@ pub fn test_push32_with_expansion() {
 
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::from(data_right), output.data);
+    assert_eq!(consumed_gas(21), output.gas_left);
 }
 
 #[test]
@@ -137,6 +170,7 @@ pub fn test_dup1() {
 
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::from(memory), output.data);
+    assert_eq!(consumed_gas(21), output.gas_left);
 }
 
 #[test]
@@ -164,6 +198,7 @@ pub fn test_dup2() {
 
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::from(memory), output.data);
+    assert_eq!(consumed_gas(24), output.gas_left);
 }
 
 #[test]
@@ -193,6 +228,7 @@ pub fn test_dup3() {
 
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::from(memory), output.data);
+    assert_eq!(consumed_gas(27), output.gas_left);
 }
 
 #[test]
@@ -251,4 +287,5 @@ pub fn test_swap2swap3() {
 
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::from(memory), output.data);
+    assert_eq!(consumed_gas(36), output.gas_left);
 }
