@@ -116,24 +116,24 @@ impl Interpreter {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let ans = a + b;
-                stack.push(ans);
+                let ans = a.overflowing_add(b);
+                stack.push(ans.0);
                 Ok(None)
             },
             OpCode::MUL => {
                 Self::consume_constant_gas(gas_left, 5)?;
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let ans = a * b;
-                stack.push(ans);
+                let ans = a.overflowing_mul(b);
+                stack.push(ans.0);
                 Ok(None)
             },
             OpCode::SUB => {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let ans = a - b;
-                stack.push(ans);
+                let ans = a.overflowing_sub(b);
+                stack.push(ans.0);
                 Ok(None)
             },
             OpCode::DIV => {
