@@ -8,7 +8,7 @@ use crate::interpreter::{
     stack::{Stack, Memory, Calldata}
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct CallContext {
     pub pc: usize,
     pub stack: Stack,
@@ -23,8 +23,8 @@ pub struct CallContext {
 const SIZE: usize = 1024;
 
 /// evm execution call stack
-#[derive(Clone, Debug)]
-pub struct CallStack(pub ArrayVec<CallContext, SIZE>);
+#[derive(Clone, Debug, Default)]
+pub struct CallStack(pub ArrayVec<Box<CallContext>, SIZE>);
 
 impl CallStack {
 
@@ -38,7 +38,7 @@ impl CallStack {
 
     pub fn push(&mut self, value: CallContext) {
         unsafe {
-            self.0.push_unchecked(value);
+            self.0.push_unchecked(Box::new(value));
         }
     }
 
@@ -51,7 +51,7 @@ impl CallStack {
 
     pub fn pop(&mut self) -> Result<CallContext, CallStackOperationError> {
         if let Some(top) = self.0.pop() {
-            return Ok(top);
+            return Ok(*top);
         }
         Err(CallStackOperationError::StackUnderflow)
     }

@@ -1,15 +1,18 @@
 pub mod interpreter;
 pub mod stack;
+pub mod utils;
 
 use ethereum_types::{
     Address, U256
 };
+use bytes::Bytes;
 
 pub type StorageKey = U256;
 pub type StorageValue = U256;
 pub type LogData = Vec<u8>;
 pub type LogTopics = Vec<U256>;
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum Interrupt {
     AccountExists(Address),
     Balance(Address),
@@ -24,5 +27,5 @@ pub enum Interrupt {
     AccessAccount(Address),
     AccessStorage(Address, StorageKey),
 
-    Return,
+    Return(i64, Bytes),
 }
