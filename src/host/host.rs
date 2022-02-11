@@ -8,12 +8,31 @@ use crate::model::evmc::{
 
 /// host without no persistent storage
 pub struct TransientHost {
-
+    context: TxContext
 }
 
 impl TransientHost {
     pub fn new() -> Self {
-        TransientHost{}
+        TransientHost{
+            context: TxContext {
+                base_fee: U256::zero(),
+                block_number: 0,
+                block_timestamp: 0,
+                chain_id: U256::one(),
+                coinbase: Address::zero(),
+                difficulty: U256::zero(),
+                gas_limit: 0,
+                gas_price: U256::zero(),
+                origin: Address::zero(),
+    
+            }
+        }
+    }
+
+    pub fn new_with_context(context: TxContext) -> Self {
+        TransientHost{
+            context: context
+        }
     }
 }
 
@@ -50,18 +69,7 @@ impl Host for TransientHost {
         }
     }
     fn get_tx_context(&self) -> TxContext {
-        TxContext {
-            base_fee: U256::zero(),
-            block_number: 0,
-            block_timestamp: 0,
-            chain_id: U256::one(),
-            coinbase: Address::zero(),
-            difficulty: U256::zero(),
-            gas_limit: 0,
-            gas_price: U256::zero(),
-            origin: Address::zero(),
-
-        }
+        self.context.clone()
     }
     fn emit_log(&mut self, address: Address, data: &[u8], topics: &[U256]) {
     }
