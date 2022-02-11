@@ -28,6 +28,7 @@ use crate::interpreter::{
 };
 use crate::utils::{
     i256::{I256, Sign},
+    address_to_u256,
 };
 
 #[derive(Clone, Debug)]
@@ -97,7 +98,7 @@ impl Interpreter {
                     panic!("codecopy not implemented");
                 }
 
-                match self.next_instruction(&opcode, &mut context.stack, &mut context.memory, &mut gas_left)? {
+                match self.next_instruction(&opcode, context, &mut gas_left)? {
                     None => (),
                     Some(i) => {
                         context.pc += 1;
@@ -123,7 +124,15 @@ impl Interpreter {
     }
 
     /// interpret next instruction, returning interrupt if needed.
-    fn next_instruction(&self, opcode: &OpCode, stack: &mut Stack, memory: &mut Memory, gas_left: &mut i64) -> Result<Option<Interrupt>, InterpreterError> {
+    fn next_instruction(
+        &self,
+        opcode: &OpCode,
+        context: &mut CallContext,
+        gas_left: &mut i64
+    ) -> Result<Option<Interrupt>, InterpreterError> {
+        let stack = &mut context.stack;
+        let memory = &mut context.memory;
+
         match opcode {
             OpCode::STOP => {
                 Ok(Some(Interrupt::Return(*gas_left, Bytes::default())))
@@ -429,6 +438,24 @@ impl Interpreter {
                 Ok(None)
             },
 
+            OpCode::ORIGIN => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                let origin = address_to_u256(context.origin);
+                stack.push(origin).map_err(|e| InterpreterError::StackOperationError(e))?;
+                Ok(None)
+            },
+            OpCode::CALLER => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                let caller = address_to_u256(context.caller);
+                stack.push(caller).map_err(|e| InterpreterError::StackOperationError(e))?;
+                Ok(None)
+            },
+            OpCode::CALLVALUE => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                stack.push(context.value).map_err(|e| InterpreterError::StackOperationError(e))?;
+                Ok(None)
+            },
+            
             OpCode::POP => {
                 Self::consume_constant_gas(gas_left, 2)?;
                 stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
@@ -455,6 +482,12 @@ impl Interpreter {
                 *gas_left -= gas_consumed;
                 Ok(None)
             },
+            OpCode::PC => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                let pc = U256::from(context.pc);
+                stack.push(pc).map_err(|e| InterpreterError::StackOperationError(e))?;
+                Ok(None)
+            }
             OpCode::MSIZE => {
                 Self::consume_constant_gas(gas_left, 2)?;
                 let len = U256::from(memory.0.len());
