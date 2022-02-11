@@ -60,18 +60,17 @@ impl Interpreter {
         }
     }
 
-    pub fn resume_interpret(&self, resume: Resume, context: &mut CallContext) -> Result<Interrupt, InterpreterError> {
+    pub fn resume_interpret(&self, resume: Resume, context: &mut CallContext, gas_left: &mut i64) -> Result<Interrupt, InterpreterError> {
         self.apply_resume(resume, &mut context.stack, &mut context.memory)?;
         
-        let mut gas_left = i64::max_value();    // TODO
-        let mut old_gas_left = gas_left;
+        let mut old_gas_left = *gas_left;
         loop {
             // code must stop at STOP, RETURN
             let byte = context.code.try_get(context.pc).map_err(|e| InterpreterError::CodeError(e))?;
             if self.trace {
-                println!("{}, {}", old_gas_left - gas_left, i64::max_value() - gas_left);
+                println!("{}, {}", old_gas_left - *gas_left, i64::max_value() - *gas_left);
             }
-            old_gas_left = gas_left;
+            old_gas_left = *gas_left;
             if let Some(opcode) = OpCode::from_u8(byte) {
                 if self.trace {
                     print!("{:?}: ", opcode);
@@ -79,7 +78,7 @@ impl Interpreter {
 
                 // handle PUSH instruction
                 if let Some(push_num) = opcode.is_push() {
-                    Self::consume_constant_gas(&mut gas_left, 3)?;
+                    Self::consume_constant_gas(gas_left, 3)?;
                     let value = U256::from_big_endian(context.code.slice(context.pc+1,push_num));
                     context.stack.push(value).map_err(|e| InterpreterError::StackOperationError(e))?;
                     context.pc += 1 + push_num;
@@ -98,7 +97,7 @@ impl Interpreter {
                     panic!("codecopy not implemented");
                 }
 
-                match self.next_instruction(&opcode, context, &mut gas_left)? {
+                match self.next_instruction(&opcode, context, gas_left)? {
                     None => (),
                     Some(i) => {
                         context.pc += 1;

@@ -25,6 +25,13 @@ impl Executor {
             callstack: CallStack::default(),
         }
     }
+    pub fn new_with_tracing(host: Box<dyn Host>) -> Self {
+        Self {
+            host: host,
+            interpreter: Interpreter::new_with_tracing(),
+            callstack: CallStack::default(),
+        }
+    }
 
     pub fn call_message(&mut self, msg: &Message) -> Output {
         self.host.call(msg)
@@ -35,8 +42,10 @@ impl Executor {
         context.code = code.clone();
 
         let mut resume = Resume::Init;
+        let mut gas_left = i64::max_value();    // TODO
+
         loop {
-            let interrupt = self.interpreter.resume_interpret(resume, &mut context);
+            let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut gas_left);
             if interrupt.is_err() {
                 return Output::default_failure();
             }
