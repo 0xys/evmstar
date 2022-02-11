@@ -22,7 +22,7 @@ pub fn mload(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64
 
     let gas_consumed = try_expand_memory(offset, WORD_SIZE as usize, memory, gas_left)?;
     let word = memory.get_word(offset);
-    stack.push(word);
+    stack.push_unchecked(word);
     
     Ok(gas_consumed)
 }

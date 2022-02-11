@@ -71,7 +71,7 @@ impl Interpreter {
                 if let Some(push_num) = opcode.is_push() {
                     Self::consume_constant_gas(&mut gas_left, 3)?;
                     let value = U256::from_big_endian(context.code.slice(context.pc+1,push_num));
-                    context.stack.push(value);
+                    context.stack.push(value).map_err(|e| InterpreterError::StackOperationError(e))?;
                     context.pc += 1 + push_num;
                     continue;
                 }
@@ -107,7 +107,7 @@ impl Interpreter {
         match resume {
             Resume::Init => (),
             Resume::Balance(balance) => {
-                stack.push(balance)
+                stack.push_unchecked(balance)
             },
             _ => {}
         }
@@ -124,7 +124,7 @@ impl Interpreter {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let ans = a.overflowing_add(b);
-                stack.push(ans.0);
+                stack.push_unchecked(ans.0);
                 Ok(None)
             },
             OpCode::MUL => {
@@ -132,7 +132,7 @@ impl Interpreter {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let ans = a.overflowing_mul(b);
-                stack.push(ans.0);
+                stack.push_unchecked(ans.0);
                 Ok(None)
             },
             OpCode::SUB => {
@@ -140,7 +140,7 @@ impl Interpreter {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let ans = a.overflowing_sub(b);
-                stack.push(ans.0);
+                stack.push_unchecked(ans.0);
                 Ok(None)
             },
             OpCode::DIV => {
@@ -148,11 +148,11 @@ impl Interpreter {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 if b.is_zero() {
-                    stack.push(U256::zero());
+                    stack.push_unchecked(U256::zero());
                     return Ok(None);
                 }
                 let ans = a / b;
-                stack.push(ans);
+                stack.push_unchecked(ans);
                 Ok(None)
             },
             OpCode::SDIV => {
@@ -164,7 +164,7 @@ impl Interpreter {
                 let b = I256::from(b);
 
                 let ans = a / b;
-                stack.push(ans.into());
+                stack.push_unchecked(ans.into());
                 Ok(None)
             },
             OpCode::MOD => {
@@ -172,11 +172,11 @@ impl Interpreter {
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 if b.is_zero() {
-                    stack.push(U256::zero());
+                    stack.push_unchecked(U256::zero());
                     return Ok(None);
                 }
                 let ans = a % b;
-                stack.push(ans);
+                stack.push_unchecked(ans);
                 Ok(None)
             },
             OpCode::SMOD => {
@@ -185,14 +185,14 @@ impl Interpreter {
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
 
                 if b.is_zero() {
-                    stack.push(U256::zero());
+                    stack.push_unchecked(U256::zero());
                     return Ok(None);
                 }
                 let a = I256::from(a);
                 let b = I256::from(b);
 
                 let ans = a % b;
-                stack.push(ans.into());
+                stack.push_unchecked(ans.into());
                 Ok(None)
             },
             OpCode::ADDMOD => {
@@ -211,7 +211,7 @@ impl Interpreter {
                     let r = (a + b) % m;
                     r.try_into().unwrap()
                 };
-                stack.push(r);
+                stack.push_unchecked(r);
                 Ok(None)
             },
             OpCode::MULMOD => {
@@ -230,7 +230,7 @@ impl Interpreter {
                     let r = (a * b) % m;
                     r.try_into().unwrap()
                 };
-                stack.push(r);
+                stack.push_unchecked(r);
                 Ok(None)
             },
             OpCode::EXP => {
@@ -240,7 +240,7 @@ impl Interpreter {
                 let (gas_consumed, value) = exp(&mut base, &mut power, i64::max_value(), Revision::Shanghai)
                     .map_err(|e| InterpreterError::EvmError(e))?;
                 
-                stack.push(value);
+                stack.push_unchecked(value);
                 Self::consume_constant_gas(gas_left, gas_consumed)?;
                 Ok(None)
             },
@@ -262,7 +262,7 @@ impl Interpreter {
                     b
                 };
 
-                stack.push(v);
+                stack.push_unchecked(v);
                 Ok(None)
             },
 
@@ -270,14 +270,14 @@ impl Interpreter {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                stack.push(if a.lt(&b) { U256::one()} else { U256::zero() });
+                stack.push_unchecked(if a.lt(&b) { U256::one()} else { U256::zero() });
                 Ok(None)
             },
             OpCode::GT => {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                stack.push(if a.gt(&b) { U256::one()} else { U256::zero() });
+                stack.push_unchecked(if a.gt(&b) { U256::one()} else { U256::zero() });
                 Ok(None)
             },
             OpCode::SLT => {
@@ -287,7 +287,7 @@ impl Interpreter {
                 let a = I256::from(a);
                 let b = I256::from(b);
 
-                stack.push(if a.lt(&b) { U256::one()} else { U256::zero() });
+                stack.push_unchecked(if a.lt(&b) { U256::one()} else { U256::zero() });
                 Ok(None)
             },
             OpCode::SGT => {
@@ -297,20 +297,20 @@ impl Interpreter {
                 let a = I256::from(a);
                 let b = I256::from(b);
 
-                stack.push(if a.gt(&b) { U256::one()} else { U256::zero() });
+                stack.push_unchecked(if a.gt(&b) { U256::one()} else { U256::zero() });
                 Ok(None)
             },
             OpCode::EQ => {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                stack.push(if a.eq(&b) { U256::one()} else { U256::zero() });
+                stack.push_unchecked(if a.eq(&b) { U256::one()} else { U256::zero() });
                 Ok(None)
             },
             OpCode::ISZERO => {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                stack.push(if a.is_zero() { U256::one()} else { U256::zero() });
+                stack.push_unchecked(if a.is_zero() { U256::one()} else { U256::zero() });
                 Ok(None)
             },
 
@@ -318,27 +318,27 @@ impl Interpreter {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                stack.push(a & b);
+                stack.push_unchecked(a & b);
                 Ok(None)
             },
             OpCode::OR => {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                stack.push(a | b);
+                stack.push_unchecked(a | b);
                 Ok(None)
             },
             OpCode::XOR => {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
                 let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                stack.push(a ^ b);
+                stack.push_unchecked(a ^ b);
                 Ok(None)
             },
             OpCode::NOT => {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                stack.push(!a);
+                stack.push_unchecked(!a);
                 Ok(None)
             },
             OpCode::BYTE => {
@@ -358,7 +358,7 @@ impl Interpreter {
                     }
                 }
 
-                stack.push(ret);
+                stack.push_unchecked(ret);
                 Ok(None)
             },
             OpCode::SHL => {
@@ -372,7 +372,7 @@ impl Interpreter {
                     value << shift.as_usize()
                 };
 
-                stack.push(ret);
+                stack.push_unchecked(ret);
                 Ok(None)
             },
             OpCode::SHR => {
@@ -386,7 +386,7 @@ impl Interpreter {
                     value >> shift.as_usize()
                 };
 
-                stack.push(ret);
+                stack.push_unchecked(ret);
                 Ok(None)
             },
             OpCode::SAR => {
@@ -416,7 +416,7 @@ impl Interpreter {
                     }
                 };
             
-                stack.push(ret);
+                stack.push_unchecked(ret);
                 Ok(None)
             },
 
@@ -449,7 +449,7 @@ impl Interpreter {
             OpCode::MSIZE => {
                 Self::consume_constant_gas(gas_left, 2)?;
                 let len = U256::from(memory.0.len());
-                stack.push(len);
+                stack.push(len).map_err(|e| InterpreterError::StackOperationError(e))?;
                 Ok(None)
             },
             
@@ -474,7 +474,7 @@ impl Interpreter {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let offset = opcode.to_usize() - OpCode::DUP1.to_usize();
                 let item = stack.peek_at(offset).map_err(|e| InterpreterError::StackOperationError(e))?;
-                stack.push(item);
+                stack.push(item).map_err(|e| InterpreterError::StackOperationError(e))?;
                 Ok(None)
             },
 

@@ -18,10 +18,20 @@ impl Stack {
         self.0.is_empty()
     }
 
-    pub fn push(&mut self, value: U256) {
+    pub fn push_unchecked(&mut self, value: U256) {
         unsafe {
             self.0.push_unchecked(value);
         }
+    }
+
+    pub fn push(&mut self, value: U256) -> Result<(), StackOperationError> {
+        if self.len() >= SIZE {
+            return Err(StackOperationError::StackOverflow);
+        }
+        unsafe {
+            self.0.push_unchecked(value);
+        }
+        Ok(())
     }
 
     pub fn peek(&self) -> Result<U256, StackOperationError> {
