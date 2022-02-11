@@ -267,23 +267,21 @@ pub fn test_sdiv() {
 }
 
 #[test]
-fn test_arith() {    // from evmordin tests
+fn test_arith() {   // https://github.com/ethereum/tests/blob/develop/src/GeneralStateTestsFiller/VMTests/vmArithmeticTest/arithFiller.yml
     let host = TransientHost::new();
     let mut executor = Executor::new(Box::new(host));
     let mut builder = Code::builder();
 
     let code = builder
-        .append(&hex!("60116001600003600302"))  // 17 -3
-        .append(&hex!("808205"))                // 17 -3 -5
-        .append(&hex!("818307"))                // 17 -3 -5 2
-        .append(&hex!("910201"))                // 17 17
-        .append(&hex!("0315"))                  // 1
-        .append(&hex!("60005360016000f3"));
+        .append(&hex!("600160019001600702600501600290046004906021900560170160030260059007600303600960110A60005260206000F3"));
     
     let output = executor.execute_raw(&code);
+
+    let data = decode("0000000000000000000000000000000000000000000000000000001b9c636491").unwrap();
+
     assert_eq!(StatusCode::Success, output.status_code);
-    assert_eq!(Bytes::from(vec![1]), output.data);
-    assert_eq!(consumed_gas(74), output.gas_left);
+    assert_eq!(Bytes::from(data), output.data);
+    assert_eq!(consumed_gas(166), output.gas_left);
 }
 
 #[test]

@@ -7,12 +7,16 @@ use crate::model::{
     revision::Revision,
 };
 
+const G_EXP: i64 = 10;
+const G_EXPBYTE: i64 = 10;
+const G_EXPBYTE_2: i64 = 50;
+
 pub fn exp(base: &mut U256, power: &mut U256, gas_left: i64, revision: Revision) -> Result<(i64, U256), StatusCode> {
-    let gas_consumed = if !power.is_zero() {
+    let gas_consumed = G_EXP + if !power.is_zero() {
         let additional_gas = if revision >= Revision::Spurious {
-            50i64
+            G_EXPBYTE_2
         } else {
-            10
+            G_EXPBYTE
         } * ((log2floor(*power) / 8 + 1) as i64);
 
         if gas_left - (additional_gas as i64) < 0 {
