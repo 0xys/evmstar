@@ -73,7 +73,7 @@ impl Interpreter {
             old_gas_left = *gas_left;
             if let Some(opcode) = OpCode::from_u8(byte) {
                 if self.trace {
-                    print!("{:?}: ", opcode);
+                    print!("[{}]: {:?} ", context.pc, opcode);
                 }
 
                 // handle PUSH instruction
