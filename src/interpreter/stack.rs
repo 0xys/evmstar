@@ -2,6 +2,10 @@ use serde::Serialize;
 use arrayvec::ArrayVec;
 use ethereum_types::U256;
 
+use crate::model::evmc::{
+    FailureKind,
+};
+
 const SIZE: usize = 1024;
 
 /// EVM stack
@@ -24,9 +28,9 @@ impl Stack {
         }
     }
 
-    pub fn push(&mut self, value: U256) -> Result<(), StackOperationError> {
+    pub fn push(&mut self, value: U256) -> Result<(), FailureKind> {
         if self.len() >= SIZE {
-            return Err(StackOperationError::StackOverflow);
+            return Err(FailureKind::StackOverflow);
         }
         unsafe {
             self.0.push_unchecked(value);
@@ -34,30 +38,30 @@ impl Stack {
         Ok(())
     }
 
-    pub fn peek(&self) -> Result<U256, StackOperationError> {
+    pub fn peek(&self) -> Result<U256, FailureKind> {
         if self.is_empty() {
-            return Err(StackOperationError::StackUnderflow);
+            return Err(FailureKind::StackUnderflow);
         }
         Ok(self.0[self.0.len() - 1])
     }
 
-    pub fn peek_at(&self, offset: usize) -> Result<U256, StackOperationError> {
+    pub fn peek_at(&self, offset: usize) -> Result<U256, FailureKind> {
         if self.is_empty() || self.0.len() <= offset {
-            return Err(StackOperationError::StackOverflow)
+            return Err(FailureKind::StackOverflow)
         }
         Ok(self.0[self.0.len() - 1 - offset])
     }
 
-    pub fn pop(&mut self) -> Result<U256, StackOperationError> {
+    pub fn pop(&mut self) -> Result<U256, FailureKind> {
         if let Some(top) = self.0.pop() {
             return Ok(top);
         }
-        Err(StackOperationError::StackUnderflow)
+        Err(FailureKind::StackUnderflow)
     }
 
-    pub fn swap(&mut self, index: usize) -> Result<(), StackOperationError> {
+    pub fn swap(&mut self, index: usize) -> Result<(), FailureKind> {
         if self.is_empty() || index >= self.0.len() {
-            return Err(StackOperationError::StackOverflow);
+            return Err(FailureKind::StackOverflow);
         }
 
         let top_index = self.0.len() - 1;
@@ -66,12 +70,6 @@ impl Stack {
 
         Ok(())
     }
-}
-
-#[derive(Clone, Debug)]
-pub enum StackOperationError {
-    StackUnderflow,
-    StackOverflow,
 }
 
 /// EVM memory

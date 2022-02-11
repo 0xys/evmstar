@@ -46,11 +46,14 @@ impl Executor {
 
         loop {
             let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut gas_left);
-            if interrupt.is_err() {
-                return Output::default_failure();
-            }
             
-            let interrupt = interrupt.unwrap();
+            let interrupt = match interrupt {
+                Ok(i) => i,
+                Err(failure_kind) => {
+                    return Output::new_failure(failure_kind);
+                }
+            };
+
             match interrupt {
                 Interrupt::Return(gas_left, data) => {
                     return Output::new_success(gas_left, data);

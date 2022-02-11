@@ -5,7 +5,7 @@ use crate::interpreter::stack::{
     Memory, Stack, num_words, MAX_BUFFER_SIZE, WORD_SIZE
 };
 use crate::model::evmc::{
-    StatusCode, FailureKind
+    FailureKind
 };
 
 const G_MEMORY: i64 = 3;
@@ -14,9 +14,9 @@ const G_MEMORY: i64 = 3;
 /// if offset + size is not a multiple of word size, new memory region is allocated to pad the gap.
 /// gas cost = g_memory * a * a^2/512, where a is number of bytes newly allocated.
 /// as defined in equation (326) in yellow paper.
-pub fn mload(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64) -> Result<i64, StatusCode> {
+pub fn mload(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64) -> Result<i64, FailureKind> {
     if offset > U256::from(MAX_BUFFER_SIZE) {
-        return Err(StatusCode::Failure(FailureKind::ArgumentOutOfRange));
+        return Err(FailureKind::ArgumentOutOfRange);
     }
     let offset = offset.as_usize();
 
@@ -29,14 +29,14 @@ pub fn mload(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64
 
 /// store the top item of the stack into memory at `offset`.
 /// any padding occurred will incur gas cost.
-pub fn mstore(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64) -> Result<i64, StatusCode> {
+pub fn mstore(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64) -> Result<i64, FailureKind> {
     if offset > U256::from(MAX_BUFFER_SIZE) {
-        return Err(StatusCode::Failure(FailureKind::ArgumentOutOfRange));
+        return Err(FailureKind::ArgumentOutOfRange);
     }
     let offset = offset.as_usize();
     let gas_consumed = try_expand_memory(offset, WORD_SIZE as usize, memory, gas_left)?;
 
-    let top = stack.pop().map_err(|_| StatusCode::Failure(FailureKind::StackUnderflow))?;
+    let top = stack.pop()?;
     let mut word = [0u8; 32];
     top.to_big_endian(&mut word);
     memory.set_range(offset, &word);
@@ -46,14 +46,14 @@ pub fn mstore(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i6
 
 /// store the top item of the stack into memory at `offset`.
 /// any padding occurred will incur gas cost.
-pub fn mstore8(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64) -> Result<i64, StatusCode> {
+pub fn mstore8(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64) -> Result<i64, FailureKind> {
     if offset > U256::from(MAX_BUFFER_SIZE) {
-        return Err(StatusCode::Failure(FailureKind::ArgumentOutOfRange));
+        return Err(FailureKind::ArgumentOutOfRange);
     }
     let offset = offset.as_usize();
     let gas_consumed = try_expand_memory(offset, 1usize, memory, gas_left)?;
 
-    let top = stack.pop().map_err(|_| StatusCode::Failure(FailureKind::StackUnderflow))?;
+    let top = stack.pop()?;
     memory.set(offset, (top.low_u32() & 0xff) as u8);
 
     Ok(gas_consumed)
@@ -61,9 +61,9 @@ pub fn mstore8(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i
 
 /// return value of `size` at `offset` in memory.
 /// it incurs memory expansion cost.
-pub fn ret(offset: U256, size: U256, memory: &mut Memory, gas_left: i64) -> Result<(i64, Bytes), StatusCode> {
+pub fn ret(offset: U256, size: U256, memory: &mut Memory, gas_left: i64) -> Result<(i64, Bytes), FailureKind> {
     if offset > U256::from(MAX_BUFFER_SIZE) {
-        return Err(StatusCode::Failure(FailureKind::ArgumentOutOfRange));
+        return Err(FailureKind::ArgumentOutOfRange);
     }
     let offset = offset.as_usize();
 
@@ -71,7 +71,7 @@ pub fn ret(offset: U256, size: U256, memory: &mut Memory, gas_left: i64) -> Resu
         return Ok((0, Bytes::default()));
     }
     if size > U256::from(MAX_BUFFER_SIZE) {
-        return Err(StatusCode::Failure(FailureKind::ArgumentOutOfRange));
+        return Err(FailureKind::ArgumentOutOfRange);
     }
     let size = size.as_usize();
 
@@ -83,7 +83,7 @@ pub fn ret(offset: U256, size: U256, memory: &mut Memory, gas_left: i64) -> Resu
 
 /// memory is resized as needed and calculate memory expansion cost.
 /// 
-fn try_expand_memory(offset: usize, size: usize, memory: &mut Memory, gas_left: i64) -> Result<i64, StatusCode> {
+fn try_expand_memory(offset: usize, size: usize, memory: &mut Memory, gas_left: i64) -> Result<i64, FailureKind> {
     let new_size = offset + size;
     let current_size: usize = memory.0.len();
 
@@ -99,7 +99,7 @@ fn try_expand_memory(offset: usize, size: usize, memory: &mut Memory, gas_left: 
     let cost = new_cost - current_cost;
 
     if gas_left - cost < 0 {
-        return Err(StatusCode::Failure(FailureKind::OutOfGas));
+        return Err(FailureKind::OutOfGas);
     }
 
     memory.0.resize((new_num_of_words * WORD_SIZE) as usize, Default::default());
