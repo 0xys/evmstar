@@ -50,6 +50,15 @@ impl Default for Interpreter {
 }
 
 impl Interpreter {
+    pub fn new_with_tracing() -> Self {
+        Self {
+            pc: 0,
+            stack: Stack::default(),
+            revision: Revision::Shanghai,
+            trace: true,
+        }
+    }
+
     pub fn resume_interpret(&self, resume: Resume, context: &mut CallContext) -> Result<Interrupt, InterpreterError> {
         self.apply_resume(resume, &mut context.stack, &mut context.memory);
         
