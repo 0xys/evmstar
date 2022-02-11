@@ -10,17 +10,17 @@ use crate::model::{
         CodeError
     },
     revision::Revision,
-    evmc::{StatusCode, FailureKind}
+    evmc::{
+        StatusCode, FailureKind,
+        TxContext
+    }
 };
 use crate::executor::{
     callstack::CallContext,
 };
-use crate::resume::{
-    Resume,
-};
 use crate::interpreter::{
     stack::{Stack, StackOperationError, Memory},
-    Interrupt,
+    Interrupt, Resume, ContextKind,
     utils::{
         exp,
         memory::{mload, mstore, mstore8, ret}
@@ -61,7 +61,7 @@ impl Interpreter {
     }
 
     pub fn resume_interpret(&self, resume: Resume, context: &mut CallContext) -> Result<Interrupt, InterpreterError> {
-        self.apply_resume(resume, &mut context.stack, &mut context.memory);
+        self.apply_resume(resume, &mut context.stack, &mut context.memory)?;
         
         let mut gas_left = i64::max_value();    // TODO
         let mut old_gas_left = gas_left;
@@ -113,14 +113,18 @@ impl Interpreter {
 
     /// resume interpretation with returned value.
     #[allow(unused_variables)]
-    fn apply_resume(&self, resume: Resume, stack: &mut Stack, memory: &mut Memory) {
+    fn apply_resume(&self, resume: Resume, stack: &mut Stack, memory: &mut Memory) -> Result<(), InterpreterError> {
         match resume {
             Resume::Init => (),
             Resume::Balance(balance) => {
-                stack.push_unchecked(balance)
+                stack.push_unchecked(balance);
+            },
+            Resume::Context(kind, context) => {
+                self.handle_resume_context(kind, &context, stack)?
             },
             _ => {}
         }
+        Ok(())
     }
 
     /// interpret next instruction, returning interrupt if needed.
@@ -455,7 +459,50 @@ impl Interpreter {
                 stack.push(context.value).map_err(|e| InterpreterError::StackOperationError(e))?;
                 Ok(None)
             },
-            
+
+            OpCode::GASPRICE => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::GasPrice)))
+            },
+
+            // OpCode::BLOCKHASH => {
+            //     Self::consume_constant_gas(gas_left, 20)?;
+            //     let height = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+            //     Ok(Some(Interrupt::Context(ContextKind::BlockHash(height.as_usize()))))
+            // },
+            OpCode::COINBASE => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::Coinbase)))
+            },
+            OpCode::TIMESTAMP => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::Timestamp)))
+            },
+            OpCode::NUMBER => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::Number)))
+            },
+            OpCode::DIFFICULTY => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::Difficulty)))
+            },
+            OpCode::GASLIMIT => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::GasLimit)))
+            },
+            OpCode::CHAINID => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::ChainId)))
+            },
+            // OpCode::SELFBALANCE => {
+            //     Self::consume_constant_gas(gas_left, 5)?;
+            //     Ok(None)
+            // },
+            OpCode::BASEFEE => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::BaseFee)))
+            }
+
             OpCode::POP => {
                 Self::consume_constant_gas(gas_left, 2)?;
                 stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
@@ -559,6 +606,42 @@ impl Interpreter {
             return Err(InterpreterError::EvmError(StatusCode::Failure(FailureKind::OutOfGas)));
         }
         *gas_left -= gas;
+        Ok(())
+    }
+
+    fn handle_resume_context(&self, kind: ContextKind, context: &TxContext, stack: &mut Stack) -> Result<(), InterpreterError> {
+        match kind {
+            ContextKind::Coinbase => {
+                let coinbase = address_to_u256(context.coinbase);
+                stack.push(coinbase).map_err(|e| InterpreterError::StackOperationError(e))?;
+            },
+            ContextKind::Timestamp => {
+                let timestamp = U256::from(context.block_timestamp);
+                stack.push(timestamp).map_err(|e| InterpreterError::StackOperationError(e))?;
+            },
+            ContextKind::Number => {
+                let number = U256::from(context.block_number);
+                stack.push(number).map_err(|e| InterpreterError::StackOperationError(e))?;
+            },
+            ContextKind::Difficulty => {
+                stack.push(context.difficulty).map_err(|e| InterpreterError::StackOperationError(e))?;
+            },
+            ContextKind::GasLimit => {
+                let gas_limit = U256::from(context.gas_limit);
+                stack.push(gas_limit).map_err(|e| InterpreterError::StackOperationError(e))?;
+            },
+            ContextKind::GasPrice => {
+                let gas_price = U256::from(context.gas_price);
+                stack.push(gas_price).map_err(|e| InterpreterError::StackOperationError(e))?;
+            },
+            ContextKind::ChainId => {
+                stack.push(context.chain_id).map_err(|e| InterpreterError::StackOperationError(e))?;
+            },
+            ContextKind::BaseFee => {
+                stack.push(context.base_fee).map_err(|e| InterpreterError::StackOperationError(e))?;
+            }
+        };
+
         Ok(())
     }
 }

@@ -2,9 +2,9 @@ use crate::host::Host;
 use crate::executor::callstack::{CallStack, CallContext};
 use crate::interpreter::{
     Interrupt,
-    interpreter::Interpreter
+    interpreter::Interpreter,
+    Resume,
 };
-use crate::resume::Resume;
 
 use crate::model::{
     evmc::*,
@@ -55,6 +55,14 @@ impl Executor {
 
     fn handle_interrupt(&mut self, interrupt: &Interrupt) -> Resume {
         match interrupt {
+            Interrupt::Balance(address) => {
+                let balance = self.host.get_balance(*address);
+                Resume::Balance(balance)
+            },
+            Interrupt::Context(kind) => {
+                let context = self.host.get_tx_context();
+                Resume::Context(*kind, context)
+            },
             _ => {
                 Resume::Unknown
             }
