@@ -35,6 +35,7 @@ pub struct Interpreter {
     pub pc: usize,
     pub stack: Stack,
     pub revision: Revision,
+    pub trace: bool,
 }
 
 impl Default for Interpreter {
@@ -42,7 +43,8 @@ impl Default for Interpreter {
         Self {
             pc: 0,
             stack: Stack::default(),
-            revision: Revision::Shanghai
+            revision: Revision::Shanghai,
+            trace: false,
         }
     }
 }
@@ -52,12 +54,18 @@ impl Interpreter {
         self.apply_resume(resume, &mut context.stack, &mut context.memory);
         
         let mut gas_left = i64::max_value();    // TODO
-
+        let mut old_gas_left = gas_left;
         loop {
             // code must stop at STOP, RETURN
-            let byte = context.code.try_get(context.pc).map_err(|e| InterpreterError::CodeError(e))?;            
-            
+            let byte = context.code.try_get(context.pc).map_err(|e| InterpreterError::CodeError(e))?;
+            if self.trace {
+                println!("{}, {}", old_gas_left - gas_left, i64::max_value() - gas_left);
+            }
+            old_gas_left = gas_left;
             if let Some(opcode) = OpCode::from_u8(byte) {
+                if self.trace {
+                    print!("{:?}: ", opcode);
+                }
 
                 // handle PUSH instruction
                 if let Some(push_num) = opcode.is_push() {
