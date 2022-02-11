@@ -31,6 +31,7 @@ pub enum Interrupt {
     AccessAccount(Address),
     AccessStorage(Address, StorageKey),
     Context(ContextKind),
+    Jump,
 
     Return(i64, Bytes),
 }

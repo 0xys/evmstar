@@ -100,8 +100,12 @@ impl Interpreter {
                 match self.next_instruction(&opcode, context, gas_left)? {
                     None => (),
                     Some(i) => {
-                        context.pc += 1;
-                        return Ok(i)
+                        if i == Interrupt::Jump {
+                            continue;   // jump doesn't need incrementing pc.
+                        }else{
+                            context.pc += 1;
+                            return Ok(i)
+                        }
                     }
                 };
             }
@@ -528,6 +532,31 @@ impl Interpreter {
                 *gas_left -= gas_consumed;
                 Ok(None)
             },
+            OpCode::JUMP => {
+                Self::consume_constant_gas(gas_left, 8)?;
+                let dest = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let dest = dest.as_usize();
+                if dest < context.code.0.len() && context.code.0[dest] == OpCode::JUMPDEST.to_u8() {
+                    context.pc = dest;
+                }else{
+                    return Err(InterpreterError::EvmError(StatusCode::Failure(FailureKind::BadJumpDestination)));
+                }
+                Ok(Some(Interrupt::Jump))
+            },
+            OpCode::JUMPI => {
+                Self::consume_constant_gas(gas_left, 10)?;
+                let dest = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let dest = dest.as_usize();
+                let cond = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                if cond.is_zero() {
+                    if dest < context.code.0.len() && context.code.0[dest] == OpCode::JUMPDEST.to_u8() {
+                        context.pc = dest;
+                    }else{
+                        return Err(InterpreterError::EvmError(StatusCode::Failure(FailureKind::BadJumpDestination)));
+                    }
+                }
+                Ok(Some(Interrupt::Jump))
+            },
             OpCode::PC => {
                 Self::consume_constant_gas(gas_left, 2)?;
                 let pc = U256::from(context.pc);
@@ -540,6 +569,10 @@ impl Interpreter {
                 stack.push(len).map_err(|e| InterpreterError::StackOperationError(e))?;
                 Ok(None)
             },
+            OpCode::JUMPDEST => {
+                Self::consume_constant_gas(gas_left, 1)?;
+                Ok(None)
+            }
             
             // PUSH instruction is already handled in `resume_interpret()`
 
