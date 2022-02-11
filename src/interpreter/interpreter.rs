@@ -544,14 +544,15 @@ impl Interpreter {
                 let dest = stack.pop()?;
                 let dest = dest.as_usize();
                 let cond = stack.pop()?;
-                if cond.is_zero() {
+                if !cond.is_zero() {
                     if dest < context.code.0.len() && context.code.0[dest] == OpCode::JUMPDEST.to_u8() {
                         context.pc = dest;
+                        return Ok(Some(Interrupt::Jump));
                     }else{
                         return Err(FailureKind::BadJumpDestination);
                     }
                 }
-                Ok(Some(Interrupt::Jump))
+                Ok(None)
             },
             OpCode::PC => {
                 Self::consume_constant_gas(gas_left, 2)?;
