@@ -89,6 +89,20 @@ pub enum FailureKind {
     OutOfMemory,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum StorageStatus {
+    /// The value of a storage item has been left unchanged: 0 -> 0 and X -> X.
+    Unchanged,
+    /// The value of a storage item has been modified: X -> Y.
+    Modified,
+    /// A storage item has been modified after being modified before: X -> Y -> Z.
+    ModifiedAgain,
+    /// A new storage item has been added: 0 -> X.
+    Added,
+    /// A storage item has been deleted: X -> 0.
+    Deleted,
+}
+
 /// https://evmc.ethereum.org/structevmc__tx__context.html
 #[derive(Clone, Debug, PartialEq)]
 pub struct TxContext {
@@ -104,10 +118,16 @@ pub struct TxContext {
 }
 
 /// https://evmc.ethereum.org/group__EVMC.html#ga9f71195f3873f9979d81d7a5e1b3aaf0
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AccessStatus {
     Cold,
     Warm,
+}
+
+impl Default for AccessStatus {
+    fn default() -> Self {
+        Self::Cold
+    }
 }
 
 /// https://evmc.ethereum.org/group__EVMC.html#gab2fa68a92a6828064a61e46060abc634

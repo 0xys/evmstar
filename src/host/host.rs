@@ -1,9 +1,9 @@
-use ethereum_types::{Address, U256, H256};
+use ethereum_types::{Address, U256};
 use bytes::Bytes;
 
 use crate::host::Host;
 use crate::model::evmc::{
-    Message, Output, TxContext, AccessStatus, StatusCode,
+    Message, Output, TxContext, AccessStatus, StatusCode, StorageStatus
 };
 
 /// host without no persistent storage
@@ -44,16 +44,17 @@ impl Host for TransientHost {
     fn get_storage(&self, address: Address, key: U256) -> U256 {
         U256::zero()
     }
-    fn set_storage(&mut self, address: Address, key: U256, value: U256) {
+    fn set_storage(&mut self, address: Address, key: U256, value: U256) -> StorageStatus {
+        StorageStatus::Unchanged
     }
     fn get_balance(&self, address: Address) -> U256 {
         U256::max_value()
     }
-    fn get_code_size(&self, address: Address) -> usize {
-        0
+    fn get_code_size(&self, address: Address) -> U256 {
+        U256::zero()
     }
-    fn get_code_hash(&self, address: Address) -> H256 {
-        H256::zero()
+    fn get_code_hash(&self, address: Address) -> U256 {
+        U256::zero()
     }
     fn copy_code(&self, address: Address, code_offset: usize, memory_offset: usize, size: usize) {
     }

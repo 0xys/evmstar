@@ -1,9 +1,10 @@
 pub mod host;
+pub mod stateful;
 
-use ethereum_types::{Address, U256, H256};
+use ethereum_types::{Address, U256};
 
 use crate::model::evmc::{
-    Message, Output, TxContext, AccessStatus
+    Message, Output, TxContext, AccessStatus, StorageStatus
 };
 
 /// EVMC Host interface
@@ -11,10 +12,10 @@ use crate::model::evmc::{
 pub trait Host {
     fn account_exists(&self, address: Address) -> bool;
     fn get_storage(&self, address: Address, key: U256) -> U256;
-    fn set_storage(&mut self, address: Address, key: U256, value: U256);
+    fn set_storage(&mut self, address: Address, key: U256, value: U256) -> StorageStatus;
     fn get_balance(&self, address: Address) -> U256;
-    fn get_code_size(&self, address: Address) -> usize;
-    fn get_code_hash(&self, address: Address) -> H256;
+    fn get_code_size(&self, address: Address) -> U256;
+    fn get_code_hash(&self, address: Address) -> U256;
     fn copy_code(&self, address: Address, code_offset: usize, memory_offset: usize, size: usize);
     fn self_destruct(&mut self, address: Address, beneficiary: Address);
     fn call(&mut self, msg: &Message) -> Output;
