@@ -2,9 +2,9 @@ use crate::host::Host;
 use crate::executor::callstack::{CallStack, CallContext};
 use crate::interpreter::{
     Interrupt,
-    interpreter::Interpreter
+    interpreter::Interpreter,
+    Resume,
 };
-use crate::resume::Resume;
 
 use crate::model::{
     evmc::*,
@@ -25,6 +25,13 @@ impl Executor {
             callstack: CallStack::default(),
         }
     }
+    pub fn new_with_tracing(host: Box<dyn Host>) -> Self {
+        Self {
+            host: host,
+            interpreter: Interpreter::new_with_tracing(),
+            callstack: CallStack::default(),
+        }
+    }
 
     pub fn call_message(&mut self, msg: &Message) -> Output {
         self.host.call(msg)
@@ -35,13 +42,18 @@ impl Executor {
         context.code = code.clone();
 
         let mut resume = Resume::Init;
+        let mut gas_left = i64::max_value();    // TODO
+
         loop {
-            let interrupt = self.interpreter.resume_interpret(resume, &mut context);
-            if interrupt.is_err() {
-                return Output::default_failure();
-            }
+            let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut gas_left);
             
-            let interrupt = interrupt.unwrap();
+            let interrupt = match interrupt {
+                Ok(i) => i,
+                Err(failure_kind) => {
+                    return Output::new_failure(failure_kind);
+                }
+            };
+
             match interrupt {
                 Interrupt::Return(gas_left, data) => {
                     return Output::new_success(gas_left, data);
@@ -55,6 +67,14 @@ impl Executor {
 
     fn handle_interrupt(&mut self, interrupt: &Interrupt) -> Resume {
         match interrupt {
+            Interrupt::Balance(address) => {
+                let balance = self.host.get_balance(*address);
+                Resume::Balance(balance)
+            },
+            Interrupt::Context(kind) => {
+                let context = self.host.get_tx_context();
+                Resume::Context(*kind, context)
+            },
             _ => {
                 Resume::Unknown
             }

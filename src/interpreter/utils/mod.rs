@@ -3,7 +3,7 @@ pub mod memory;
 use ethereum_types::U256;
 
 use crate::model::{
-    evmc::{StatusCode, FailureKind},
+    evmc::{FailureKind},
     revision::Revision,
 };
 
@@ -11,7 +11,7 @@ const G_EXP: i64 = 10;
 const G_EXPBYTE: i64 = 10;
 const G_EXPBYTE_2: i64 = 50;
 
-pub fn exp(base: &mut U256, power: &mut U256, gas_left: i64, revision: Revision) -> Result<(i64, U256), StatusCode> {
+pub fn exp(base: &mut U256, power: &mut U256, gas_left: i64, revision: Revision) -> Result<(i64, U256), FailureKind> {
     let gas_consumed = G_EXP + if !power.is_zero() {
         let additional_gas = if revision >= Revision::Spurious {
             G_EXPBYTE_2
@@ -20,7 +20,7 @@ pub fn exp(base: &mut U256, power: &mut U256, gas_left: i64, revision: Revision)
         } * ((log2floor(*power) / 8 + 1) as i64);
 
         if gas_left - (additional_gas as i64) < 0 {
-            return Err(StatusCode::Failure(FailureKind::OutOfGas));
+            return Err(FailureKind::OutOfGas);
         }
 
         additional_gas

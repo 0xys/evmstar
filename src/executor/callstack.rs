@@ -1,4 +1,4 @@
-use ethereum_types::Address;
+use ethereum_types::{Address, U256};
 use arrayvec::ArrayVec;
 
 use crate::model::{
@@ -15,9 +15,10 @@ pub struct CallContext {
     pub memory: Memory,
     pub calldata: Calldata,
     pub code: Code,
-    pub sender: Address,
+    pub caller: Address,
     pub to: Address,
     pub origin: Address,
+    pub value: U256,
 }
 
 const SIZE: usize = 1024;

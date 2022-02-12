@@ -47,10 +47,10 @@ impl Output {
         }
     }
 
-    pub fn default_failure() -> Self {
+    pub fn new_failure(failure_kind: FailureKind) -> Self {
         Output {
             gas_left: i64::max_value(),
-            status_code: StatusCode::Failure(FailureKind::Generic("default".to_owned())),
+            status_code: StatusCode::Failure(failure_kind),
             create_address: None,
             data: Bytes::default(),
             size: 0

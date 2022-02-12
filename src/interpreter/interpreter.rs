@@ -6,21 +6,18 @@ use bytes::Bytes;
 
 use crate::model::{
     opcode::OpCode,
-    code::{
-        CodeError
-    },
     revision::Revision,
-    evmc::{StatusCode, FailureKind}
+    evmc::{
+        FailureKind,
+        TxContext
+    }
 };
 use crate::executor::{
     callstack::CallContext,
 };
-use crate::resume::{
-    Resume,
-};
 use crate::interpreter::{
-    stack::{Stack, StackOperationError, Memory},
-    Interrupt,
+    stack::{Stack, Memory},
+    Interrupt, Resume, ContextKind,
     utils::{
         exp,
         memory::{mload, mstore, mstore8, ret}
@@ -28,6 +25,7 @@ use crate::interpreter::{
 };
 use crate::utils::{
     i256::{I256, Sign},
+    address_to_u256,
 };
 
 #[derive(Clone, Debug)]
@@ -59,37 +57,36 @@ impl Interpreter {
         }
     }
 
-    pub fn resume_interpret(&self, resume: Resume, context: &mut CallContext) -> Result<Interrupt, InterpreterError> {
-        self.apply_resume(resume, &mut context.stack, &mut context.memory);
+    pub fn resume_interpret(&self, resume: Resume, context: &mut CallContext, gas_left: &mut i64) -> Result<Interrupt, FailureKind> {
+        self.apply_resume(resume, &mut context.stack, &mut context.memory)?;
         
-        let mut gas_left = i64::max_value();    // TODO
-        let mut old_gas_left = gas_left;
+        let mut old_gas_left = *gas_left;
         loop {
             // code must stop at STOP, RETURN
-            let byte = context.code.try_get(context.pc).map_err(|e| InterpreterError::CodeError(e))?;
+            let byte = context.code.try_get(context.pc).map_err(|_| FailureKind::Generic("code must stop at STOP, RETURN".to_owned()))?;
             if self.trace {
-                println!("{}, {}", old_gas_left - gas_left, i64::max_value() - gas_left);
+                println!("{}, {}", old_gas_left - *gas_left, i64::max_value() - *gas_left);
             }
-            old_gas_left = gas_left;
+            old_gas_left = *gas_left;
             if let Some(opcode) = OpCode::from_u8(byte) {
                 if self.trace {
-                    print!("{:?}: ", opcode);
+                    print!("[{}]: {:?} ", context.pc, opcode);
                 }
 
                 // handle PUSH instruction
                 if let Some(push_num) = opcode.is_push() {
-                    Self::consume_constant_gas(&mut gas_left, 3)?;
+                    Self::consume_constant_gas(gas_left, 3)?;
                     let value = U256::from_big_endian(context.code.slice(context.pc+1,push_num));
-                    context.stack.push(value).map_err(|e| InterpreterError::StackOperationError(e))?;
+                    context.stack.push(value)?;
                     context.pc += 1 + push_num;
                     continue;
                 }
                 
                 // handle CODECOPY instruction
                 if opcode == OpCode::CODECOPY {
-                    // let dest_offset = context.stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                    // let offset = context.stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                    // let size = context.stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                    // let dest_offset = context.stack.pop()?;
+                    // let offset = context.stack.pop()?;
+                    // let size = context.stack.pop()?;
 
                     // let dest_offset = dest_offset.as_usize();
                     // let offset = offset.as_usize();
@@ -97,11 +94,15 @@ impl Interpreter {
                     panic!("codecopy not implemented");
                 }
 
-                match self.next_instruction(&opcode, &mut context.stack, &mut context.memory, &mut gas_left)? {
+                match self.next_instruction(&opcode, context, gas_left)? {
                     None => (),
                     Some(i) => {
-                        context.pc += 1;
-                        return Ok(i)
+                        if i == Interrupt::Jump {
+                            continue;   // jump doesn't need incrementing pc.
+                        }else{
+                            context.pc += 1;
+                            return Ok(i)
+                        }
                     }
                 };
             }
@@ -112,50 +113,62 @@ impl Interpreter {
 
     /// resume interpretation with returned value.
     #[allow(unused_variables)]
-    fn apply_resume(&self, resume: Resume, stack: &mut Stack, memory: &mut Memory) {
+    fn apply_resume(&self, resume: Resume, stack: &mut Stack, memory: &mut Memory) -> Result<(), FailureKind> {
         match resume {
             Resume::Init => (),
             Resume::Balance(balance) => {
-                stack.push_unchecked(balance)
+                stack.push_unchecked(balance);
+            },
+            Resume::Context(kind, context) => {
+                self.handle_resume_context(kind, &context, stack)?
             },
             _ => {}
         }
+        Ok(())
     }
 
     /// interpret next instruction, returning interrupt if needed.
-    fn next_instruction(&self, opcode: &OpCode, stack: &mut Stack, memory: &mut Memory, gas_left: &mut i64) -> Result<Option<Interrupt>, InterpreterError> {
+    fn next_instruction(
+        &self,
+        opcode: &OpCode,
+        context: &mut CallContext,
+        gas_left: &mut i64
+    ) -> Result<Option<Interrupt>, FailureKind> {
+        let stack = &mut context.stack;
+        let memory = &mut context.memory;
+
         match opcode {
             OpCode::STOP => {
                 Ok(Some(Interrupt::Return(*gas_left, Bytes::default())))
             },
             OpCode::ADD => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 let ans = a.overflowing_add(b);
                 stack.push_unchecked(ans.0);
                 Ok(None)
             },
             OpCode::MUL => {
                 Self::consume_constant_gas(gas_left, 5)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 let ans = a.overflowing_mul(b);
                 stack.push_unchecked(ans.0);
                 Ok(None)
             },
             OpCode::SUB => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 let ans = a.overflowing_sub(b);
                 stack.push_unchecked(ans.0);
                 Ok(None)
             },
             OpCode::DIV => {
                 Self::consume_constant_gas(gas_left, 5)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 if b.is_zero() {
                     stack.push_unchecked(U256::zero());
                     return Ok(None);
@@ -166,8 +179,8 @@ impl Interpreter {
             },
             OpCode::SDIV => {
                 Self::consume_constant_gas(gas_left, 5)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
 
                 let a = I256::from(a);
                 let b = I256::from(b);
@@ -178,8 +191,8 @@ impl Interpreter {
             },
             OpCode::MOD => {
                 Self::consume_constant_gas(gas_left, 5)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 if b.is_zero() {
                     stack.push_unchecked(U256::zero());
                     return Ok(None);
@@ -190,8 +203,8 @@ impl Interpreter {
             },
             OpCode::SMOD => {
                 Self::consume_constant_gas(gas_left, 5)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
 
                 if b.is_zero() {
                     stack.push_unchecked(U256::zero());
@@ -206,9 +219,9 @@ impl Interpreter {
             },
             OpCode::ADDMOD => {
                 Self::consume_constant_gas(gas_left, 8)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let m = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
+                let m = stack.pop()?;
 
                 let a = U512::from(a);
                 let b = U512::from(b);
@@ -225,9 +238,9 @@ impl Interpreter {
             },
             OpCode::MULMOD => {
                 Self::consume_constant_gas(gas_left, 8)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let m = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
+                let m = stack.pop()?;
 
                 let a = U512::from(a);
                 let b = U512::from(b);
@@ -243,11 +256,10 @@ impl Interpreter {
                 Ok(None)
             },
             OpCode::EXP => {
-                let mut base = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let mut power = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let mut base = stack.pop()?;
+                let mut power = stack.pop()?;
 
-                let (gas_consumed, value) = exp(&mut base, &mut power, i64::max_value(), Revision::Shanghai)
-                    .map_err(|e| InterpreterError::EvmError(e))?;
+                let (gas_consumed, value) = exp(&mut base, &mut power, i64::max_value(), Revision::Shanghai)?;
                 
                 stack.push_unchecked(value);
                 Self::consume_constant_gas(gas_left, gas_consumed)?;
@@ -255,8 +267,8 @@ impl Interpreter {
             },
             OpCode::SIGNEXTEND => {
                 Self::consume_constant_gas(gas_left, 5)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
 
                 let v = if a < U256::from(32) {
                     let bit_index = (8 * a.low_u32() + 7) as usize;
@@ -277,22 +289,22 @@ impl Interpreter {
 
             OpCode::LT => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 stack.push_unchecked(if a.lt(&b) { U256::one()} else { U256::zero() });
                 Ok(None)
             },
             OpCode::GT => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 stack.push_unchecked(if a.gt(&b) { U256::one()} else { U256::zero() });
                 Ok(None)
             },
             OpCode::SLT => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 let a = I256::from(a);
                 let b = I256::from(b);
 
@@ -301,8 +313,8 @@ impl Interpreter {
             },
             OpCode::SGT => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 let a = I256::from(a);
                 let b = I256::from(b);
 
@@ -311,49 +323,49 @@ impl Interpreter {
             },
             OpCode::EQ => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 stack.push_unchecked(if a.eq(&b) { U256::one()} else { U256::zero() });
                 Ok(None)
             },
             OpCode::ISZERO => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
                 stack.push_unchecked(if a.is_zero() { U256::one()} else { U256::zero() });
                 Ok(None)
             },
 
             OpCode::AND => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 stack.push_unchecked(a & b);
                 Ok(None)
             },
             OpCode::OR => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 stack.push_unchecked(a | b);
                 Ok(None)
             },
             OpCode::XOR => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
                 stack.push_unchecked(a ^ b);
                 Ok(None)
             },
             OpCode::NOT => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
                 stack.push_unchecked(!a);
                 Ok(None)
             },
             OpCode::BYTE => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let a = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let b = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let a = stack.pop()?;
+                let b = stack.pop()?;
 
                 let mut ret = U256::zero();
 
@@ -372,8 +384,8 @@ impl Interpreter {
             },
             OpCode::SHL => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let shift = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let value = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let shift = stack.pop()?;
+                let value = stack.pop()?;
 
                 let ret = if value.is_zero() || shift >= U256::from(256) {
                     U256::zero()
@@ -386,8 +398,8 @@ impl Interpreter {
             },
             OpCode::SHR => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let shift = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let value = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let shift = stack.pop()?;
+                let value = stack.pop()?;
 
                 let ret = if value.is_zero() || shift >= U256::from(256) {
                     U256::zero()
@@ -400,8 +412,8 @@ impl Interpreter {
             },
             OpCode::SAR => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let shift = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let value = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                let shift = stack.pop()?;
+                let value = stack.pop()?;
                 let value = I256::from(value);
 
                 let ret = if value == I256::zero() || shift >= U256::from(256) {
@@ -429,38 +441,135 @@ impl Interpreter {
                 Ok(None)
             },
 
+            OpCode::ORIGIN => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                let origin = address_to_u256(context.origin);
+                stack.push(origin)?;
+                Ok(None)
+            },
+            OpCode::CALLER => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                let caller = address_to_u256(context.caller);
+                stack.push(caller)?;
+                Ok(None)
+            },
+            OpCode::CALLVALUE => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                stack.push(context.value)?;
+                Ok(None)
+            },
+
+            OpCode::GASPRICE => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::GasPrice)))
+            },
+
+            // OpCode::BLOCKHASH => {
+            //     Self::consume_constant_gas(gas_left, 20)?;
+            //     let height = stack.pop()?;
+            //     Ok(Some(Interrupt::Context(ContextKind::BlockHash(height.as_usize()))))
+            // },
+            OpCode::COINBASE => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::Coinbase)))
+            },
+            OpCode::TIMESTAMP => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::Timestamp)))
+            },
+            OpCode::NUMBER => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::Number)))
+            },
+            OpCode::DIFFICULTY => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::Difficulty)))
+            },
+            OpCode::GASLIMIT => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::GasLimit)))
+            },
+            OpCode::CHAINID => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::ChainId)))
+            },
+            // OpCode::SELFBALANCE => {
+            //     Self::consume_constant_gas(gas_left, 5)?;
+            //     Ok(None)
+            // },
+            OpCode::BASEFEE => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::BaseFee)))
+            }
+
             OpCode::POP => {
                 Self::consume_constant_gas(gas_left, 2)?;
-                stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
+                stack.pop()?;
                 Ok(None)
             },
             OpCode::MLOAD => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let gas_consumed = mload(offset, memory, stack, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
+                let offset = stack.pop()?;
+                let gas_consumed = mload(offset, memory, stack, *gas_left).map_err(|e| e)?;
                 *gas_left -= gas_consumed;
                 Ok(None)
             },
             OpCode::MSTORE => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let gas_consumed = mstore(offset, memory, stack, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
+                let offset = stack.pop()?;
+                let gas_consumed = mstore(offset, memory, stack, *gas_left)?;
                 *gas_left -= gas_consumed;
                 Ok(None)
             }, 
             OpCode::MSTORE8 => {
                 Self::consume_constant_gas(gas_left, 3)?;
-                let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let gas_consumed = mstore8(offset, memory, stack, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
+                let offset = stack.pop()?;
+                let gas_consumed = mstore8(offset, memory, stack, *gas_left)?;
                 *gas_left -= gas_consumed;
                 Ok(None)
             },
+            OpCode::JUMP => {
+                Self::consume_constant_gas(gas_left, 8)?;
+                let dest = stack.pop()?;
+                let dest = dest.as_usize();
+                if dest < context.code.0.len() && context.code.0[dest] == OpCode::JUMPDEST.to_u8() {
+                    context.pc = dest;
+                }else{
+                    return Err(FailureKind::BadJumpDestination);
+                }
+                Ok(Some(Interrupt::Jump))
+            },
+            OpCode::JUMPI => {
+                Self::consume_constant_gas(gas_left, 10)?;
+                let dest = stack.pop()?;
+                let dest = dest.as_usize();
+                let cond = stack.pop()?;
+                if !cond.is_zero() {
+                    if dest < context.code.0.len() && context.code.0[dest] == OpCode::JUMPDEST.to_u8() {
+                        context.pc = dest;
+                        return Ok(Some(Interrupt::Jump));
+                    }else{
+                        return Err(FailureKind::BadJumpDestination);
+                    }
+                }
+                Ok(None)
+            },
+            OpCode::PC => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                let pc = U256::from(context.pc);
+                stack.push(pc)?;
+                Ok(None)
+            }
             OpCode::MSIZE => {
                 Self::consume_constant_gas(gas_left, 2)?;
                 let len = U256::from(memory.0.len());
-                stack.push(len).map_err(|e| InterpreterError::StackOperationError(e))?;
+                stack.push(len)?;
                 Ok(None)
             },
+            OpCode::JUMPDEST => {
+                Self::consume_constant_gas(gas_left, 1)?;
+                Ok(None)
+            }
             
             // PUSH instruction is already handled in `resume_interpret()`
 
@@ -482,8 +591,8 @@ impl Interpreter {
             | OpCode::DUP16 => {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let offset = opcode.to_usize() - OpCode::DUP1.to_usize();
-                let item = stack.peek_at(offset).map_err(|e| InterpreterError::StackOperationError(e))?;
-                stack.push(item).map_err(|e| InterpreterError::StackOperationError(e))?;
+                let item = stack.peek_at(offset)?;
+                stack.push(item)?;
                 Ok(None)
             },
 
@@ -505,14 +614,14 @@ impl Interpreter {
             | OpCode::SWAP16 => {
                 Self::consume_constant_gas(gas_left, 3)?;
                 let offset = opcode.to_usize() - OpCode::SWAP1.to_usize() + 1;
-                stack.swap(offset).map_err(|e| InterpreterError::StackOperationError(e))?;
+                stack.swap(offset)?;
                 Ok(None)
             },
 
             OpCode::RETURN => {
-                let offset = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let size = stack.pop().map_err(|e| InterpreterError::StackOperationError(e))?;
-                let (gas_consumed, data) = ret(offset, size, memory, *gas_left).map_err(|e| InterpreterError::EvmError(e))?;
+                let offset = stack.pop()?;
+                let size = stack.pop()?;
+                let (gas_consumed, data) = ret(offset, size, memory, *gas_left)?;
                 *gas_left -= gas_consumed;
                 Ok(Some(Interrupt::Return(*gas_left, data)))
             }
@@ -521,18 +630,47 @@ impl Interpreter {
         }
     }
 
-    fn consume_constant_gas(gas_left: &mut i64, gas: i64) -> Result<(), InterpreterError> {
+    fn consume_constant_gas(gas_left: &mut i64, gas: i64) -> Result<(), FailureKind> {
         if *gas_left - gas < 0 {
-            return Err(InterpreterError::EvmError(StatusCode::Failure(FailureKind::OutOfGas)));
+            return Err(FailureKind::OutOfGas);
         }
         *gas_left -= gas;
         Ok(())
     }
-}
 
-#[derive(Clone, Debug)]
-pub enum InterpreterError {
-    StackOperationError(StackOperationError),
-    CodeError(CodeError),
-    EvmError(StatusCode)
+    fn handle_resume_context(&self, kind: ContextKind, context: &TxContext, stack: &mut Stack) -> Result<(), FailureKind> {
+        match kind {
+            ContextKind::Coinbase => {
+                let coinbase = address_to_u256(context.coinbase);
+                stack.push(coinbase).map_err(|_| FailureKind::StackOverflow)?;
+            },
+            ContextKind::Timestamp => {
+                let timestamp = U256::from(context.block_timestamp);
+                stack.push(timestamp).map_err(|_| FailureKind::StackOverflow)?;
+            },
+            ContextKind::Number => {
+                let number = U256::from(context.block_number);
+                stack.push(number).map_err(|_| FailureKind::StackOverflow)?;
+            },
+            ContextKind::Difficulty => {
+                stack.push(context.difficulty).map_err(|_| FailureKind::StackOverflow)?;
+            },
+            ContextKind::GasLimit => {
+                let gas_limit = U256::from(context.gas_limit);
+                stack.push(gas_limit).map_err(|_| FailureKind::StackOverflow)?;
+            },
+            ContextKind::GasPrice => {
+                let gas_price = U256::from(context.gas_price);
+                stack.push(gas_price).map_err(|_| FailureKind::StackOverflow)?;
+            },
+            ContextKind::ChainId => {
+                stack.push(context.chain_id).map_err(|_| FailureKind::StackOverflow)?;
+            },
+            ContextKind::BaseFee => {
+                stack.push(context.base_fee).map_err(|_| FailureKind::StackOverflow)?;
+            }
+        };
+
+        Ok(())
+    }
 }
