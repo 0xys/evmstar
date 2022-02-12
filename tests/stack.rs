@@ -43,6 +43,39 @@ pub fn test_push() {
 }
 
 #[test]
+pub fn test_pop_empty() {
+    let host = TransientHost::new();
+    let mut executor = Executor::new(Box::new(host));
+    let mut builder = Code::builder();
+
+    let code = builder
+        .append_opcode(OpCode::POP);
+    
+    let output = executor.execute_raw(&code);
+
+    assert_eq!(StatusCode::Failure(FailureKind::StackUnderflow), output.status_code);
+}
+
+#[test]
+pub fn test_push_overflow() {
+    let host = TransientHost::new();
+    let mut executor = Executor::new(Box::new(host));
+    let mut builder = Code::builder();
+
+    let mut code: Vec<u8> = vec![];
+    for _ in 0..1025 {  // push 1025 items into stack.
+        code.push(OpCode::PUSH1.to_u8());
+        code.push(0x00);
+    }
+    code.push(OpCode::RETURN.to_u8());
+
+    let code = builder.append(code.as_slice());
+    let output = executor.execute_raw(&code);
+
+    assert_eq!(StatusCode::Failure(FailureKind::StackOverflow), output.status_code);
+}
+
+#[test]
 pub fn test_push2() {
     {
         let host = TransientHost::new();
@@ -249,11 +282,7 @@ pub fn test_dup_overflow() {
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
-    let result = match output.status_code {
-        StatusCode::Failure(_) => true,
-        _ => false
-    };
-    assert_eq!(true, result);
+    assert_eq!(StatusCode::Failure(FailureKind::StackOverflow), output.status_code);
 }
 
 #[test]
