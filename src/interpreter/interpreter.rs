@@ -156,9 +156,9 @@ impl Interpreter {
                     }
                 };
             },
-            Resume::SetStorage(access_status, storage_status) => {
-                exec_context.refund_counter += calc_sstore_gas_refund(exec_context.revision, access_status, storage_status);
-                *gas_left -= calc_sstore_gas_cost(exec_context.revision, access_status, storage_status);
+            Resume::SetStorage(new_value, access_status, storage_status) => {
+                exec_context.refund_counter += calc_sstore_gas_refund(new_value, exec_context.revision, storage_status);
+                *gas_left -= calc_sstore_gas_cost(new_value, exec_context.revision, access_status, storage_status);
             }
             _ => {}
         }

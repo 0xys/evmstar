@@ -3,7 +3,7 @@ use bytes::Bytes;
 
 use crate::host::Host;
 use crate::model::evmc::{
-    Message, Output, TxContext, AccessStatus, StatusCode, StorageStatus
+    Message, Output, TxContext, AccessStatus, StatusCode, StorageDiff
 };
 
 /// host without no persistent storage
@@ -44,8 +44,8 @@ impl Host for TransientHost {
     fn get_storage(&self, address: Address, key: U256) -> U256 {
         U256::zero()
     }
-    fn set_storage(&mut self, address: Address, key: U256, value: U256) -> StorageStatus {
-        StorageStatus::Unchanged
+    fn set_storage(&mut self, address: Address, key: U256, value: U256) -> StorageDiff {
+        StorageDiff::default()
     }
     fn get_balance(&self, address: Address) -> U256 {
         U256::max_value()

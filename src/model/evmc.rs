@@ -89,18 +89,10 @@ pub enum FailureKind {
     OutOfMemory,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum StorageStatus {
-    /// The value of a storage item has been left unchanged: 0 -> 0 and X -> X.
-    Unchanged,
-    /// The value of a storage item has been modified: X -> Y.
-    Modified,
-    /// A storage item has been modified after being modified before: X -> Y -> Z.
-    ModifiedAgain,
-    /// A new storage item has been added: 0 -> X.
-    Added,
-    /// A storage item has been deleted: X -> 0.
-    Deleted,
+#[derive(Clone, Copy, Debug, Default)]
+pub struct StorageDiff {
+    pub original: U256,
+    pub current: U256,
 }
 
 /// https://evmc.ethereum.org/structevmc__tx__context.html

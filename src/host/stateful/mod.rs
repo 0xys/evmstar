@@ -7,7 +7,7 @@ use std::{
 
 use crate::host::Host;
 use crate::model::evmc::{
-    Message, Output, TxContext, AccessStatus, StatusCode, StorageStatus
+    Message, Output, TxContext, AccessStatus, StatusCode, StorageDiff
 };
 use hex_literal::hex;
 
@@ -35,8 +35,8 @@ pub struct SelfdestructRecord {
 
 #[derive(Clone, Debug, Default)]
 pub struct StorageValue {
-    pub value: U256,
-    pub dirty: bool,
+    pub original_value: U256,
+    pub current_value: U256,
     pub access_status: AccessStatus,
 }
 
@@ -128,11 +128,11 @@ impl Host for StatefulHost {
 
         self.accounts
             .get(&address)
-            .and_then(|account| account.storage.get(&key).map(|value| value.value))
+            .and_then(|account| account.storage.get(&key).map(|value| value.current_value))
             .unwrap_or_else(U256::zero)
     }
 
-    fn set_storage(&mut self, address: Address, key: U256, value: U256) -> StorageStatus{
+    fn set_storage(&mut self, address: Address, key: U256, new_value: U256) -> StorageDiff {
         let mut record = self.recorded.lock().unwrap();
         record.record_account_access(address);
 
@@ -140,7 +140,7 @@ impl Host for StatefulHost {
         // This will create the account in case it was not present.
         // This is convenient for unit testing and standalone EVM execution to preserve the
         // storage values after the execution terminates.
-        let old = self
+        let value = self
             .accounts
             .entry(address)
             .or_default()
@@ -151,26 +151,19 @@ impl Host for StatefulHost {
         // Follow https://eips.ethereum.org/EIPS/eip-1283 specification.
         // WARNING! This is not complete implementation as refund is not handled here.
 
-        if old.value == value {
-            return StorageStatus::Unchanged;
+        if value.current_value == new_value {
+            return StorageDiff{
+                original: value.original_value,
+                current: value.current_value,
+            }
         }
 
-        let status = if !old.dirty {
-            old.dirty = true;
-            if old.value.is_zero() {
-                StorageStatus::Added
-            } else if !value.is_zero() {
-                StorageStatus::Modified
-            } else {
-                StorageStatus::Deleted
-            }
-        } else {
-            StorageStatus::ModifiedAgain
-        };
+        value.current_value = new_value;
 
-        old.value = value;
-
-        status
+        return StorageDiff {
+            original: value.original_value,
+            current: value.current_value,
+        }
     }
     
     fn get_balance(&self, address: Address) -> U256 {
