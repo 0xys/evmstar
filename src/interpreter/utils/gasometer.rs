@@ -59,6 +59,8 @@ pub fn calc_sstore_gas_cost(new_value: U256, revision: Revision, access_status: 
 /// sstore on Istanbul: https://github.com/sorpaas/EIPs/blob/sp-eip-new-net-metering/EIPS/eip-2200.md
 /// 
 /// sstore on Berlin: https://eips.ethereum.org/EIPS/eip-2929
+/// 
+/// sstore on London: https://eips.ethereum.org/EIPS/eip-3529
 pub fn calc_sstore_gas_refund(new_value: U256, revision: Revision, diff: StorageDiff) -> i64 {
     let is_eip1283 = revision >= Revision::Istanbul || revision == Revision::Constantinople;
     
@@ -121,6 +123,7 @@ fn sstore_reset_gas(revision: Revision) -> i64 {
 }
 
 fn sstore_clear_schedule(revision: Revision) -> i64 {
+    // https://eips.ethereum.org/EIPS/eip-3529
     if revision >= Revision::London {
         sstore_reset_gas(revision) + ACCESS_LIST_STORAGE_KEY_COST
     }else{
