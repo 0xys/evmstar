@@ -61,3 +61,9 @@ impl Revision {
         Self::latest() as usize + 1
     }
 }
+
+impl Default for Revision {
+    fn default() -> Self {
+        Revision::Shanghai
+    }
+}

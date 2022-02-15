@@ -1,5 +1,7 @@
 use crate::host::Host;
-use crate::executor::callstack::{CallStack, CallContext};
+use crate::executor::callstack::{
+    CallStack, CallContext, ExecutionContext
+};
 use crate::interpreter::{
     Interrupt,
     interpreter::Interpreter,
@@ -9,12 +11,14 @@ use crate::interpreter::{
 use crate::model::{
     evmc::*,
     code::Code,
+    revision::Revision,
 };
 #[allow(dead_code)]
 pub struct Executor {
     host: Box<dyn Host>,
     interpreter: Interpreter,
     callstack: CallStack,
+    revision: Revision,
 }
 
 impl Executor {
@@ -23,6 +27,7 @@ impl Executor {
             host: host,
             interpreter: Interpreter::default(),
             callstack: CallStack::default(),
+            revision: Revision::Shanghai
         }
     }
     pub fn new_with_tracing(host: Box<dyn Host>) -> Self {
@@ -30,6 +35,7 @@ impl Executor {
             host: host,
             interpreter: Interpreter::new_with_tracing(),
             callstack: CallStack::default(),
+            revision: Revision::Shanghai
         }
     }
 
@@ -44,8 +50,10 @@ impl Executor {
         let mut resume = Resume::Init;
         let mut gas_left = i64::max_value();    // TODO
 
+        let mut exec_context = ExecutionContext::default();
+
         loop {
-            let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut gas_left);
+            let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut exec_context, &mut gas_left);
             
             let interrupt = match interrupt {
                 Ok(i) => i,
@@ -74,6 +82,26 @@ impl Executor {
             Interrupt::Context(kind) => {
                 let context = self.host.get_tx_context();
                 Resume::Context(*kind, context)
+            },
+            Interrupt::GetStorage(address, key) => {
+                let access_status = if self.revision >= Revision::Berlin {
+                    self.host.access_storage(*address, *key)
+                }else{
+                    //  pre-berlin is always warm
+                    AccessStatus::Warm
+                };
+                let value = self.host.get_storage(*address, *key);
+                Resume::GetStorage(value, access_status)
+            },
+            Interrupt::SetStorage(address, key, value) => {
+                let access_status = if self.revision >= Revision::Berlin {
+                    self.host.access_storage(*address, *key)
+                }else{
+                    //  pre-berlin is always warm
+                    AccessStatus::Warm
+                };
+                let storage_status = self.host.set_storage(*address, *key, *value);
+                Resume::SetStorage(access_status, storage_status)
             },
             _ => {
                 Resume::Unknown

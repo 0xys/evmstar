@@ -9,18 +9,22 @@ use crate::model::{
     revision::Revision,
     evmc::{
         FailureKind,
-        TxContext
+        TxContext,
+        AccessStatus,
     }
 };
 use crate::executor::{
-    callstack::CallContext,
+    callstack::{
+        CallContext, ExecutionContext
+    }
 };
 use crate::interpreter::{
-    stack::{Stack, Memory},
+    stack::{Stack},
     Interrupt, Resume, ContextKind,
     utils::{
         exp,
-        memory::{mload, mstore, mstore8, ret}
+        memory::{mload, mstore, mstore8, ret},
+        gasometer::{calc_sstore_gas_cost, calc_sstore_gas_refund},
     },
 };
 use crate::utils::{
@@ -32,7 +36,7 @@ use crate::utils::{
 pub struct Interpreter {
     pub pc: usize,
     pub stack: Stack,
-    pub revision: Revision,
+    // pub revision: Revision,
     pub trace: bool,
 }
 
@@ -41,7 +45,6 @@ impl Default for Interpreter {
         Self {
             pc: 0,
             stack: Stack::default(),
-            revision: Revision::Shanghai,
             trace: false,
         }
     }
@@ -52,33 +55,38 @@ impl Interpreter {
         Self {
             pc: 0,
             stack: Stack::default(),
-            revision: Revision::Shanghai,
             trace: true,
         }
     }
 
-    pub fn resume_interpret(&self, resume: Resume, context: &mut CallContext, gas_left: &mut i64) -> Result<Interrupt, FailureKind> {
-        self.apply_resume(resume, &mut context.stack, &mut context.memory)?;
+    pub fn resume_interpret(
+        &self,
+        resume: Resume,
+        call_context: &mut CallContext,
+        exec_context: &mut ExecutionContext,
+        gas_left: &mut i64
+    ) -> Result<Interrupt, FailureKind> {
+        self.apply_resume(resume, call_context, exec_context, gas_left)?;
         
         let mut old_gas_left = *gas_left;
         loop {
             // code must stop at STOP, RETURN
-            let byte = context.code.try_get(context.pc).map_err(|_| FailureKind::Generic("code must stop at STOP, RETURN".to_owned()))?;
+            let byte = call_context.code.try_get(call_context.pc).map_err(|_| FailureKind::Generic("code must stop at STOP, RETURN".to_owned()))?;
             if self.trace {
                 println!("{}, {}", old_gas_left - *gas_left, i64::max_value() - *gas_left);
             }
             old_gas_left = *gas_left;
             if let Some(opcode) = OpCode::from_u8(byte) {
                 if self.trace {
-                    print!("[{}]: {:?} ", context.pc, opcode);
+                    print!("[{}]: {:?} ", call_context.pc, opcode);
                 }
 
                 // handle PUSH instruction
                 if let Some(push_num) = opcode.is_push() {
                     Self::consume_constant_gas(gas_left, 3)?;
-                    let value = U256::from_big_endian(context.code.slice(context.pc+1,push_num));
-                    context.stack.push(value)?;
-                    context.pc += 1 + push_num;
+                    let value = U256::from_big_endian(call_context.code.slice(call_context.pc+1,push_num));
+                    call_context.stack.push(value)?;
+                    call_context.pc += 1 + push_num;
                     continue;
                 }
                 
@@ -94,26 +102,35 @@ impl Interpreter {
                     panic!("codecopy not implemented");
                 }
 
-                match self.next_instruction(&opcode, context, gas_left)? {
+                match self.next_instruction(&opcode, call_context, exec_context, gas_left)? {
                     None => (),
                     Some(i) => {
                         if i == Interrupt::Jump {
                             continue;   // jump doesn't need incrementing pc.
                         }else{
-                            context.pc += 1;
+                            call_context.pc += 1;
                             return Ok(i)
                         }
                     }
                 };
             }
             
-            context.pc += 1;
+            call_context.pc += 1;
         }
     }
 
     /// resume interpretation with returned value.
     #[allow(unused_variables)]
-    fn apply_resume(&self, resume: Resume, stack: &mut Stack, memory: &mut Memory) -> Result<(), FailureKind> {
+    fn apply_resume(
+        &self,
+        resume: Resume,
+        call_context: &mut CallContext,
+        exec_context: &mut ExecutionContext,
+        gas_left: &mut i64
+    ) -> Result<(), FailureKind> {
+        let stack = &mut call_context.stack;
+        let memory = &mut call_context.memory;
+        
         match resume {
             Resume::Init => (),
             Resume::Balance(balance) => {
@@ -122,8 +139,30 @@ impl Interpreter {
             Resume::Context(kind, context) => {
                 self.handle_resume_context(kind, &context, stack)?
             },
+            Resume::GetStorage(value, access_status) => {
+                stack.push_unchecked(value);
+
+                // calculate dynamic gas
+                *gas_left -= if exec_context.revision >= Revision::Berlin {
+                    match access_status {
+                        AccessStatus::Warm => 100,
+                        AccessStatus::Cold => 2100,
+                    }
+                }else{
+                    800
+                };
+            },
+            Resume::SetStorage(access_status, storage_status) => {
+                exec_context.refund_counter += calc_sstore_gas_refund(exec_context.revision, access_status, storage_status);
+                *gas_left -= calc_sstore_gas_cost(exec_context.revision, access_status, storage_status);
+            }
             _ => {}
         }
+
+        if *gas_left < 0 {
+            return Err(FailureKind::OutOfGas);
+        }
+
         Ok(())
     }
 
@@ -132,6 +171,7 @@ impl Interpreter {
         &self,
         opcode: &OpCode,
         context: &mut CallContext,
+        exec_context: &mut ExecutionContext,
         gas_left: &mut i64
     ) -> Result<Option<Interrupt>, FailureKind> {
         let stack = &mut context.stack;
@@ -259,7 +299,7 @@ impl Interpreter {
                 let mut base = stack.pop()?;
                 let mut power = stack.pop()?;
 
-                let (gas_consumed, value) = exp(&mut base, &mut power, i64::max_value(), Revision::Shanghai)?;
+                let (gas_consumed, value) = exp(&mut base, &mut power, i64::max_value(), exec_context.revision)?;
                 
                 stack.push_unchecked(value);
                 Self::consume_constant_gas(gas_left, gas_consumed)?;
@@ -527,6 +567,31 @@ impl Interpreter {
                 let gas_consumed = mstore8(offset, memory, stack, *gas_left)?;
                 *gas_left -= gas_consumed;
                 Ok(None)
+            },
+            OpCode::SLOAD => {
+                // static gas cost is 0. dynamic gas cost is deducted on resume.
+                let key = stack.pop()?;
+                Ok(Some(Interrupt::GetStorage(context.to, key)))
+            },
+            OpCode::SSTORE => {
+                // https://eips.ethereum.org/EIPS/eip-214
+                if exec_context.revision >= Revision::Byzantium {
+                    if context.is_staticcall {
+                        return Err(FailureKind::StaticModeViolcation)
+                    }
+                }
+
+                // https://eips.ethereum.org/EIPS/eip-2200
+                if exec_context.revision >= Revision::Istanbul {
+                    if *gas_left <= 2300 {
+                        return Err(FailureKind::OutOfGas)
+                    }
+                }
+
+                // static gas cost is 0. dynamic gas cost is deducted on resume.
+                let key = stack.pop()?;
+                let value = stack.pop()?;
+                Ok(Some(Interrupt::SetStorage(context.to, key, value)))
             },
             OpCode::JUMP => {
                 Self::consume_constant_gas(gas_left, 8)?;

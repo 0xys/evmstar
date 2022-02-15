@@ -3,10 +3,17 @@ use arrayvec::ArrayVec;
 
 use crate::model::{
     code::Code,
+    revision::Revision,
 };
 use crate::interpreter::{
     stack::{Stack, Memory, Calldata}
 };
+
+#[derive(Copy, Clone, Debug, Default)]
+pub struct ExecutionContext {
+    pub refund_counter: i64,
+    pub revision: Revision,
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct CallContext {
@@ -19,6 +26,7 @@ pub struct CallContext {
     pub to: Address,
     pub origin: Address,
     pub value: U256,
+    pub is_staticcall: bool,
 }
 
 const SIZE: usize = 1024;
