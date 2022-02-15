@@ -149,7 +149,11 @@ impl Interpreter {
                         AccessStatus::Cold => 2100,
                     }
                 }else{
-                    800
+                    if exec_context.revision == Revision::Istanbul {
+                        800
+                    }else{
+                        200
+                    }
                 };
             },
             Resume::SetStorage(access_status, storage_status) => {
