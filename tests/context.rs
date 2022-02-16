@@ -232,3 +232,30 @@ fn test_difficulty() {
     assert_eq!(Bytes::from(data), output.data);
     assert_eq!(consumed_gas(17), output.gas_left);
 }
+
+#[test]
+fn test_blockhash() {
+    let host = TransientHost::new_with_context(get_default_context());
+    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let mut builder = Code::builder();
+
+    let code = builder
+        .append_opcode(OpCode::PUSH1)
+        .append(&[0x01])
+        .append_opcode(OpCode::BLOCKHASH)
+        .append_opcode(OpCode::PUSH1)
+        .append(&[0x00])
+        .append_opcode(OpCode::MSTORE)
+        .append_opcode(OpCode::PUSH1)
+        .append(&[0x20])
+        .append_opcode(OpCode::PUSH1)
+        .append(&[0x00])
+        .append_opcode(OpCode::RETURN);
+    
+    let output = executor.execute_raw(&code);
+    let data = decode("0000000000000000000000000000000000000000000000000000000000000101").unwrap();
+
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(data), output.data);
+    assert_eq!(consumed_gas(38), output.gas_left);
+}

@@ -83,6 +83,10 @@ impl Executor {
                 let context = self.host.get_tx_context();
                 Resume::Context(*kind, context)
             },
+            Interrupt::Blockhash(height) => {
+                let hash = self.host.get_blockhash(*height);
+                Resume::Blockhash(hash)
+            },
             Interrupt::GetStorage(address, key) => {
                 let access_status = if self.revision >= Revision::Berlin {
                     self.host.access_storage(*address, *key)

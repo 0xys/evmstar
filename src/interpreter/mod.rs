@@ -35,6 +35,8 @@ pub enum Interrupt {
     Context(ContextKind),
     Jump,
 
+    Blockhash(usize),
+
     Return(i64, Bytes),
 }
 
@@ -44,6 +46,7 @@ pub enum Resume {
     Context(ContextKind, TxContext),
     GetStorage(StorageValue, AccessStatus),
     SetStorage(StorageValue, AccessStatus, StorageDiff),
+    Blockhash(U256),
     Unknown,
 }
 

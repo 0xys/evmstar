@@ -26,4 +26,7 @@ pub trait Host {
     fn emit_log(&mut self, address: Address, data: &[u8], topics: &[U256]);
     fn access_account(&mut self, address: Address) -> AccessStatus;
     fn access_storage(&mut self, address: Address, key: U256) -> AccessStatus;
+
+    // extension
+    fn get_blockhash(&self, height: usize) -> U256;
 }

@@ -139,6 +139,9 @@ impl Interpreter {
             Resume::Context(kind, context) => {
                 self.handle_resume_context(kind, &context, stack)?
             },
+            Resume::Blockhash(hash) => {
+                stack.push_unchecked(hash);
+            },
             Resume::GetStorage(value, access_status) => {
                 stack.push_unchecked(value);
 
@@ -508,11 +511,11 @@ impl Interpreter {
                 Ok(Some(Interrupt::Context(ContextKind::GasPrice)))
             },
 
-            // OpCode::BLOCKHASH => {
-            //     Self::consume_constant_gas(gas_left, 20)?;
-            //     let height = stack.pop()?;
-            //     Ok(Some(Interrupt::Context(ContextKind::BlockHash(height.as_usize()))))
-            // },
+            OpCode::BLOCKHASH => {
+                Self::consume_constant_gas(gas_left, 20)?;
+                let height = stack.pop()?;
+                Ok(Some(Interrupt::Blockhash(height.as_usize())))
+            },
             OpCode::COINBASE => {
                 Self::consume_constant_gas(gas_left, 2)?;
                 Ok(Some(Interrupt::Context(ContextKind::Coinbase)))

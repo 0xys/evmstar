@@ -80,4 +80,7 @@ impl Host for TransientHost {
     fn access_storage(&mut self, address: Address, key: U256) -> AccessStatus {
         AccessStatus::Warm
     }
+    fn get_blockhash(&self, height: usize) -> U256 {
+        U256::from(0x0101)
+    }
 }

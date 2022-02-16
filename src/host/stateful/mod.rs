@@ -264,4 +264,8 @@ impl Host for StatefulHost {
         value.access_status = AccessStatus::Warm;
         access_status
     }
+
+    fn get_blockhash(&self, height: usize) -> U256 {
+        U256::from(height)
+    }
 }
