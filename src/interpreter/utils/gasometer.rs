@@ -76,26 +76,24 @@ pub fn calc_sstore_gas_refund(new_value: U256, revision: Revision, diff: Storage
         }else{
             sstore_clear_schedule(revision)
         }
-    }else{
+    } else {
+        let mut refund = 0i64;
         if !diff.original.is_zero() {
             if diff.current.is_zero() {
-                return -sstore_clear_schedule(revision);
+                refund -= sstore_clear_schedule(revision);
             }
             if new_value.is_zero() {
-                return sstore_clear_schedule(revision);
+                refund += sstore_clear_schedule(revision);
             }
-            0
-        }else{
-            // reset
-            if diff.original == new_value {
-                if diff.original.is_zero() {
-                    return SSTORE_SET_GAS - sload_gas(revision);
-                }else{
-                    return sstore_reset_gas(revision) - sload_gas(revision);
-                }
-            }
-            0
         }
+        if diff.original == new_value {
+            if diff.original.is_zero() {
+                refund += SSTORE_SET_GAS - sload_gas(revision);
+            }else{
+                refund += sstore_reset_gas(revision) - sload_gas(revision);
+            }
+        }
+        refund
     }
 }
 
