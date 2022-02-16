@@ -83,6 +83,11 @@ impl Executor {
                 let context = self.host.get_tx_context();
                 Resume::Context(*kind, context)
             },
+            Interrupt::ExtCodeHash(address) => {
+                let access_status = self.host.access_account(*address);
+                let hash = self.host.get_code_hash(*address);
+                Resume::ExtCodeHash(hash, access_status)
+            },
             Interrupt::Blockhash(height) => {
                 let hash = self.host.get_blockhash(*height);
                 Resume::Blockhash(hash)

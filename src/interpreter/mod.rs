@@ -36,6 +36,7 @@ pub enum Interrupt {
     Jump,
 
     Blockhash(usize),
+    ExtCodeHash(Address),
 
     Return(i64, Bytes),
 }
@@ -47,6 +48,7 @@ pub enum Resume {
     GetStorage(StorageValue, AccessStatus),
     SetStorage(StorageValue, AccessStatus, StorageDiff),
     Blockhash(U256),
+    ExtCodeHash(U256, AccessStatus),
     Unknown,
 }
 

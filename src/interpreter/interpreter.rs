@@ -29,7 +29,7 @@ use crate::interpreter::{
 };
 use crate::utils::{
     i256::{I256, Sign},
-    address_to_u256,
+    address_to_u256, u256_to_address,
 };
 
 #[derive(Clone, Debug)]
@@ -138,6 +138,25 @@ impl Interpreter {
             },
             Resume::Context(kind, context) => {
                 self.handle_resume_context(kind, &context, stack)?
+            },
+            Resume::ExtCodeHash(hash, access_status) => {
+                let gas =
+                    if exec_context.revision >= Revision::Berlin {
+                        match access_status {
+                            AccessStatus::Warm => 100,
+                            AccessStatus::Cold => 2600,
+                        }
+                    }else{
+                        match exec_context.revision {
+                            Revision::Constantinople | Revision::Petersburg => 400,
+                            Revision::Istanbul => 700,
+                            _ => {
+                                return Err(FailureKind::InvalidInstruction);
+                            }
+                        }
+                    };                
+                Self::consume_constant_gas(gas_left, gas)?;
+                stack.push_unchecked(hash);
             },
             Resume::Blockhash(hash) => {
                 stack.push_unchecked(hash);
@@ -511,6 +530,11 @@ impl Interpreter {
                 Ok(Some(Interrupt::Context(ContextKind::GasPrice)))
             },
 
+            OpCode::EXTCODEHASH => {
+                let address = stack.pop()?;
+                let address = u256_to_address(address);
+                Ok(Some(Interrupt::ExtCodeHash(address)))
+            },
             OpCode::BLOCKHASH => {
                 Self::consume_constant_gas(gas_left, 20)?;
                 let height = stack.pop()?;

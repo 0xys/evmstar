@@ -113,6 +113,12 @@ impl StatefulHost {
     }
 }
 
+impl StatefulHost {
+    pub fn add_account(&mut self, address: Address, account: Account) {
+        self.accounts.insert(address, account);
+    }
+}
+
 #[allow(unused_variables)]
 impl Host for StatefulHost {
 
