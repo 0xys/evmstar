@@ -2,7 +2,6 @@ use ethereum_types::{
     U256, U512
 };
 use core::convert::TryInto;
-use bytes::Bytes;
 
 use crate::model::{
     opcode::OpCode,
@@ -70,13 +69,16 @@ impl Interpreter {
         
         let mut old_gas_left = *gas_left;
         loop {
-            // code must stop at STOP, RETURN
-            let byte = call_context.code.try_get(call_context.pc).map_err(|_| FailureKind::Generic("code must stop at STOP, RETURN".to_owned()))?;
+            let op_byte = match call_context.code.0.get(call_context.pc) {
+                Some(num) => *num,
+                None => return Ok(Interrupt::Stop(*gas_left))
+            };
+            
             if self.trace {
                 println!("{}, {}", old_gas_left - *gas_left, i64::max_value() - *gas_left);
             }
             old_gas_left = *gas_left;
-            if let Some(opcode) = OpCode::from_u8(byte) {
+            if let Some(opcode) = OpCode::from_u8(op_byte) {
                 if self.trace {
                     print!("[{}]: {:?} ", call_context.pc, opcode);
                 }
@@ -205,7 +207,7 @@ impl Interpreter {
 
         match opcode {
             OpCode::STOP => {
-                Ok(Some(Interrupt::Return(*gas_left, Bytes::default())))
+                Ok(Some(Interrupt::Stop(*gas_left)))
             },
             OpCode::ADD => {
                 Self::consume_constant_gas(gas_left, 3)?;

@@ -39,6 +39,8 @@ pub enum Interrupt {
     ExtCodeHash(Address),
 
     Return(i64, Bytes),
+    Stop(i64),
+    Revert(i64),
 }
 
 pub enum Resume {

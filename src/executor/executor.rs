@@ -1,3 +1,5 @@
+use bytes::Bytes;
+
 use crate::host::Host;
 use crate::executor::callstack::{
     CallStack, CallContext, ExecutionContext
@@ -38,6 +40,17 @@ impl Executor {
             revision: Revision::Shanghai
         }
     }
+    pub fn new_with(host: Box<dyn Host>, is_trace: bool, revision: Revision) -> Self {
+        Self {
+            host: host,
+            interpreter: match is_trace {
+                true => Interpreter::new_with_tracing(),
+                false => Interpreter::default()
+            },
+            callstack: CallStack::default(),
+            revision: revision
+        }
+    }
 
     pub fn call_message(&mut self, msg: &Message) -> Output {
         self.host.call(msg)
@@ -65,6 +78,9 @@ impl Executor {
             match interrupt {
                 Interrupt::Return(gas_left, data) => {
                     return Output::new_success(gas_left, data);
+                },
+                Interrupt::Stop(gas_left) => {
+                    return Output::new_success(gas_left, Bytes::default())
                 }
                 _ => ()
             };
