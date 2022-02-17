@@ -93,10 +93,25 @@ pub enum FailureKind {
     OutOfMemory,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum StorageStatus {
+    Added,
+    Modified,
+    ModifiedAgain,
+    Unchanged,
+    Deleted,
+}
+impl Default for StorageStatus {
+    fn default() -> Self {
+        Self::Unchanged
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct StorageDiff {
     pub original: U256,
     pub current: U256,
+    pub status: StorageStatus,
 }
 
 /// https://evmc.ethereum.org/structevmc__tx__context.html

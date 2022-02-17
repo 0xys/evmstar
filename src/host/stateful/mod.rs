@@ -7,7 +7,7 @@ use std::{
 
 use crate::host::Host;
 use crate::model::evmc::{
-    Message, Output, TxContext, AccessStatus, StatusCode, StorageDiff
+    Message, Output, TxContext, AccessStatus, StatusCode, StorageDiff, StorageStatus,
 };
 use hex_literal::hex;
 
@@ -38,6 +38,7 @@ pub struct StorageValue {
     pub original_value: U256,
     pub current_value: U256,
     pub access_status: AccessStatus,
+    pub dirty: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -173,14 +174,26 @@ impl Host for StatefulHost {
             .or_default();
 
         // Follow https://eips.ethereum.org/EIPS/eip-1283 specification.
-        // WARNING! This is not complete implementation as refund is not handled here.
-
         if value.current_value == new_value {
             return StorageDiff{
                 original: value.original_value,
                 current: value.current_value,
+                status: StorageStatus::Unchanged,
             }
         }
+
+        let status = if value.dirty {
+            StorageStatus::ModifiedAgain
+        }else{
+            value.dirty = true;
+            if value.current_value.is_zero() {
+                StorageStatus::Added
+            }else if new_value.is_zero() {
+                StorageStatus::Deleted
+            }else{
+                StorageStatus::Modified
+            }
+        };
 
         let current_value_before_set = value.current_value;
         value.current_value = new_value;
@@ -188,6 +201,7 @@ impl Host for StatefulHost {
         return StorageDiff {
             original: value.original_value,
             current: current_value_before_set,
+            status: status,
         }
     }
     

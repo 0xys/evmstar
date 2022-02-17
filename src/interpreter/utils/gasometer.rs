@@ -5,7 +5,7 @@ use crate::model::{
 };
 
 use crate::model::evmc::{
-    AccessStatus, StorageDiff,
+    AccessStatus, StorageDiff, StorageStatus,
 };
 
 /// calculate gas cost
@@ -16,6 +16,16 @@ use crate::model::evmc::{
 /// 
 /// sstore on Berlin: https://eips.ethereum.org/EIPS/eip-2929
 pub fn calc_sstore_gas_cost(new_value: U256, revision: Revision, access_status: AccessStatus, diff: StorageDiff) -> i64 {    
+    let is_eip1283 = revision >= Revision::Istanbul || revision == Revision::Constantinople;
+    
+    if !is_eip1283 {
+        if diff.status == StorageStatus::Added {
+            return 20000;
+        }else{
+            return 5000;
+        }
+    }
+    
     // unchanged: current == new_value
     if diff.current == new_value {
         return match (revision, access_status) {

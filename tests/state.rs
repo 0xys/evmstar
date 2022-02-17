@@ -131,6 +131,9 @@ fn test_storage_legacy() {
     test_storage(hex!("600060005560016000556000600055").to_vec(), 15018, 30000, 0x01, Revision::Homestead);
     test_storage(hex!("600060005560006000556001600055").to_vec(), 30018,     0, 0x00, Revision::Homestead);
     test_storage(hex!("600060005560006000556001600055").to_vec(), 15018, 15000, 0x01, Revision::Homestead);
+
+    test_storage(hex!("6000600055600160005560006000556001600055").to_vec(), 35024, 15000, 0x00, Revision::Homestead);
+    test_storage(hex!("6000600055600160005560006000556001600055").to_vec(), 20024, 30000, 0x01, Revision::Homestead);
 }
 
 fn test_storage(code: Vec<u8>, gas_used: i64, gas_refund: i64, original: usize, revision: Revision) {
