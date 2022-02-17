@@ -84,6 +84,7 @@ pub struct StatefulHost {
     context: TxContext,
     accounts: HashMap<Address, Account>,
     recorded: Mutex<Records>,
+    is_always_warm: bool,
 }
 
 impl StatefulHost {
@@ -101,7 +102,8 @@ impl StatefulHost {
                 origin: Address::zero(),
             },
             accounts: Default::default(),
-            recorded: Mutex::default()
+            recorded: Mutex::default(),
+            is_always_warm: false,
         }
     }
 
@@ -109,7 +111,8 @@ impl StatefulHost {
         Self {
             context: context,
             accounts: Default::default(),
-            recorded: Mutex::default()
+            recorded: Mutex::default(),
+            is_always_warm: false,
         }
     }
 }
@@ -135,6 +138,9 @@ impl StatefulHost {
 
         value.original_value = new_value;
         value.current_value = new_value;
+    }
+    pub fn debug_set_storage_as_warm(&mut self) {
+        self.is_always_warm = true;
     }
 }
 
@@ -275,6 +281,10 @@ impl Host for StatefulHost {
     }
 
     fn access_account(&mut self, address: Address) -> AccessStatus {
+        if self.is_always_warm {
+            return AccessStatus::Warm;
+        }
+
         let mut record = self.recorded.lock().unwrap();
         let already_accessed = record.account_accesses.iter().any(|&a| a == address);
 
@@ -293,6 +303,10 @@ impl Host for StatefulHost {
     }
 
     fn access_storage(&mut self, address: Address, key: U256) -> AccessStatus {
+        if self.is_always_warm {
+            return AccessStatus::Warm;
+        }
+        
         let value = self
             .accounts
             .entry(address)
