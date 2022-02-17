@@ -63,7 +63,10 @@ impl Executor {
         let mut resume = Resume::Init;
         let mut gas_left = i64::max_value();    // TODO
 
-        let mut exec_context = ExecutionContext::default();
+        let mut exec_context = ExecutionContext {
+            refund_counter: 0,
+            revision: self.revision
+        };
 
         loop {
             let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut exec_context, &mut gas_left);
