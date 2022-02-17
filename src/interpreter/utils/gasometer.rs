@@ -29,8 +29,8 @@ pub fn calc_sstore_gas_cost(new_value: U256, revision: Revision, access_status: 
     // unchanged: current == new_value
     if diff.current == new_value {
         return match (revision, access_status) {
-            (Revision::Berlin, AccessStatus::Cold) => 2200,
-            (Revision::Berlin, AccessStatus::Warm) => 100,
+            (Revision::Berlin, AccessStatus::Cold) | (Revision::London, AccessStatus::Cold) | (Revision::Shanghai, AccessStatus::Cold) => 2200,
+            (Revision::Berlin, AccessStatus::Warm) | (Revision::London, AccessStatus::Warm) | (Revision::Shanghai, AccessStatus::Warm) => 100,
             (Revision::Istanbul, _) => 800,
             (Revision::Constantinople, _) => 200,
             _ => 5000
@@ -40,21 +40,21 @@ pub fn calc_sstore_gas_cost(new_value: U256, revision: Revision, access_status: 
     if diff.original == diff.current {
         if diff.original.is_zero() {
             20000 + match (revision, access_status) {
-                (Revision::Berlin, AccessStatus::Cold) => 2100,
-                (Revision::Berlin, AccessStatus::Warm) => 0,
+                (Revision::Berlin, AccessStatus::Cold) | (Revision::London, AccessStatus::Cold) | (Revision::Shanghai, AccessStatus::Cold) => 2100,
+                (Revision::Berlin, AccessStatus::Warm) | (Revision::London, AccessStatus::Warm) | (Revision::Shanghai, AccessStatus::Warm) => 0,
                 _ => 0,
             }
         }else{
             5000 + match (revision, access_status) {
-                (Revision::Berlin, AccessStatus::Cold) => 0,
-                (Revision::Berlin, AccessStatus::Warm) => -2100,
+                (Revision::Berlin, AccessStatus::Cold) | (Revision::London, AccessStatus::Cold) | (Revision::Shanghai, AccessStatus::Cold) => 0,
+                (Revision::Berlin, AccessStatus::Warm) | (Revision::London, AccessStatus::Warm) | (Revision::Shanghai, AccessStatus::Warm) => -2100,
                 _ => 0,
             }
         }
     }else{
         match (revision, access_status) {
-            (Revision::Berlin, AccessStatus::Cold) => 2200,
-            (Revision::Berlin, AccessStatus::Warm) => 100,
+            (Revision::Berlin, AccessStatus::Cold) | (Revision::London, AccessStatus::Cold) | (Revision::Shanghai, AccessStatus::Cold) => 2200,
+            (Revision::Berlin, AccessStatus::Warm) | (Revision::London, AccessStatus::Warm) | (Revision::Shanghai, AccessStatus::Warm) => 100,
             (Revision::Istanbul, _) => 800,
             (Revision::Constantinople, _) => 200,
             _ => 5000,
@@ -127,7 +127,7 @@ fn sload_gas(revision: Revision) -> i64 {
 
 fn sstore_reset_gas(revision: Revision) -> i64 {
     5000 + match revision {
-        Revision::Berlin => -2100,
+        Revision::Berlin | Revision::London | Revision::Shanghai => -2100,
         _ => 0,
     }
 }
