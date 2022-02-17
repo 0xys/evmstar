@@ -171,22 +171,25 @@ impl Interpreter {
                 stack.push_unchecked(value);
 
                 // calculate dynamic gas
-                *gas_left -= if exec_context.revision >= Revision::Berlin {
-                    match access_status {
-                        AccessStatus::Warm => 100,
-                        AccessStatus::Cold => 2100,
-                    }
-                }else{
-                    if exec_context.revision == Revision::Istanbul {
-                        800
+                let gas =
+                    if exec_context.revision >= Revision::Berlin {
+                        match access_status {
+                            AccessStatus::Warm => 100,
+                            AccessStatus::Cold => 2100,
+                        }
                     }else{
-                        200
-                    }
-                };
+                        match exec_context.revision {
+                            Revision::Frontier | Revision::Homestead => 50,
+                            Revision::Istanbul => 800,
+                            _ => 200
+                        }
+                    };
+                Self::consume_constant_gas(gas_left, gas)?;
             },
             Resume::SetStorage(new_value, access_status, storage_status) => {
                 exec_context.refund_counter += calc_sstore_gas_refund(new_value, exec_context.revision, storage_status);
-                *gas_left -= calc_sstore_gas_cost(new_value, exec_context.revision, access_status, storage_status);
+                let gas = calc_sstore_gas_cost(new_value, exec_context.revision, access_status, storage_status);
+                Self::consume_constant_gas(gas_left, gas)?;
             }
             _ => {}
         }

@@ -154,3 +154,36 @@ fn test_storage(code: Vec<u8>, gas_used: i64, gas_refund: i64, original: usize, 
     assert_eq!(gas_used, consumed_gas(output.gas_left));
     assert_eq!(gas_refund, output.gas_refund);
 }
+
+#[test]
+fn test_sload() {
+    let code = &hex!("60006000546000600054").to_vec();
+    test_sload_logic(code, 112, Revision::Frontier);
+    test_sload_logic(code, 112, Revision::Homestead);
+    test_sload_logic(code, 412, Revision::Tangerine);
+    test_sload_logic(code, 412, Revision::Spurious);
+    test_sload_logic(code, 412, Revision::Byzantium);
+    test_sload_logic(code, 412, Revision::Constantinople);
+    test_sload_logic(code, 412, Revision::Petersburg);
+    test_sload_logic(code, 1612, Revision::Istanbul);
+    test_sload_logic(code, 2212, Revision::Berlin);
+    test_sload_logic(code, 2212, Revision::London);
+    test_sload_logic(code, 2212, Revision::Shanghai);
+}
+
+fn test_sload_logic(code: &Vec<u8>, gas_used: i64, revision: Revision) {
+    let host = StatefulHost::new_with(get_default_context());
+
+    let mut builder = Code::builder();
+    let code = builder.append(code);
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+
+    let mut executor = Executor::new_with(Box::new(host), true, revision);
+    let output = executor.execute_raw_with(context);
+
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::default(), output.data);
+    assert_eq!(gas_used, consumed_gas(output.gas_left));
+}
