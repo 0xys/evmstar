@@ -65,19 +65,23 @@ impl Interpreter {
         exec_context: &mut ExecutionContext,
         gas_left: &mut i64
     ) -> Result<Interrupt, FailureKind> {
+        let mut old_gas_left = *gas_left;
+        
         self.apply_resume(resume, call_context, exec_context, gas_left)?;
         
-        let mut old_gas_left = *gas_left;
         loop {
+            if self.trace {
+                let gas_consumed_by_current = old_gas_left - *gas_left;
+                let gas_consumed_sofar = i64::max_value() - *gas_left;
+                println!("{}, {}", gas_consumed_by_current, gas_consumed_sofar);
+            }
+            old_gas_left = *gas_left;
+
             let op_byte = match call_context.code.0.get(call_context.pc) {
                 Some(num) => *num,
                 None => return Ok(Interrupt::Stop(*gas_left))
             };
-            
-            if self.trace {
-                println!("{}, {}", old_gas_left - *gas_left, i64::max_value() - *gas_left);
-            }
-            old_gas_left = *gas_left;
+
             if let Some(opcode) = OpCode::from_u8(op_byte) {
                 if self.trace {
                     print!("[{}]: {:?} ", call_context.pc, opcode);
