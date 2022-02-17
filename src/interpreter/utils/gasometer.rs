@@ -71,10 +71,10 @@ pub fn calc_sstore_gas_refund(new_value: U256, revision: Revision, diff: Storage
     }
 
     if diff.original == diff.current {
-        if diff.original.is_zero() {
-            0
-        }else{
+        if !diff.original.is_zero() && new_value.is_zero() {
             sstore_clear_schedule(revision)
+        }else{
+            0
         }
     } else {
         let mut refund = 0i64;

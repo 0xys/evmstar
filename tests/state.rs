@@ -131,6 +131,7 @@ fn test_eip1283_1(){// 1
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(412, consumed_gas(output.gas_left));
+    assert_eq!(0, output.gas_refund);
 }
 
 #[test]
@@ -145,6 +146,7 @@ fn test_eip1283_2(){// 2
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(20212, consumed_gas(output.gas_left));
+    assert_eq!(0, output.gas_refund);
 }
 
 #[test]
@@ -159,6 +161,7 @@ fn test_eip1283_3(){// 3
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(20212, consumed_gas(output.gas_left));
+    assert_eq!(19800, output.gas_refund);
 }
 
 #[test]
@@ -173,6 +176,7 @@ fn test_eip1283_4(){// 4
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(20212, consumed_gas(output.gas_left));
+    assert_eq!(0, output.gas_refund);
 }
 
 #[test]
@@ -187,6 +191,7 @@ fn test_eip1283_5(){// 5
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(20212, consumed_gas(output.gas_left));
+    assert_eq!(0, output.gas_refund);
 }
 
 #[test]
@@ -206,6 +211,7 @@ fn test_eip1283_6(){// 6
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(5212, consumed_gas(output.gas_left));
+    assert_eq!(15000, output.gas_refund);
 }
 
 #[test]
@@ -225,6 +231,7 @@ fn test_eip1283_7(){// 7
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(5212, consumed_gas(output.gas_left));
+    assert_eq!(4800, output.gas_refund);
 }
 
 #[test]
@@ -244,6 +251,7 @@ fn test_eip1283_8(){// 8
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(5212, consumed_gas(output.gas_left));
+    assert_eq!(0, output.gas_refund);
 }
 
 #[test]
@@ -263,6 +271,7 @@ fn test_eip1283_9(){// 9
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(5212, consumed_gas(output.gas_left));
+    assert_eq!(15000, output.gas_refund);
 }
 
 #[test]
@@ -282,6 +291,7 @@ fn test_eip1283_10(){// 10
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(5212, consumed_gas(output.gas_left));
+    assert_eq!(0, output.gas_refund);
 }
 
 #[test]
@@ -301,6 +311,7 @@ fn test_eip1283_11(){// 11
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(5212, consumed_gas(output.gas_left));
+    assert_eq!(4800, output.gas_refund);
 }
 
 #[test]
@@ -320,6 +331,7 @@ fn test_eip1283_12(){// 12
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(5212, consumed_gas(output.gas_left));
+    assert_eq!(0, output.gas_refund);
 }
 
 #[test]
@@ -339,6 +351,7 @@ fn test_eip1283_13(){// 13
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(5212, consumed_gas(output.gas_left));
+    assert_eq!(15000, output.gas_refund);
 }
 
 #[test]
@@ -358,6 +371,7 @@ fn test_eip1283_14(){// 14
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(5212, consumed_gas(output.gas_left));
+    assert_eq!(0, output.gas_refund);
 }
 
 #[test]
@@ -377,6 +391,7 @@ fn test_eip1283_15(){// 15
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(412, consumed_gas(output.gas_left));
+    assert_eq!(0, output.gas_refund);
 }
 
 #[test]
@@ -396,6 +411,7 @@ fn test_eip1283_16(){// 16
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(40218, consumed_gas(output.gas_left));
+    assert_eq!(19800, output.gas_refund);
 }
 
 #[test]
@@ -415,4 +431,5 @@ fn test_eip1283_17(){// 17
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(10218, consumed_gas(output.gas_left));
+    assert_eq!(19800, output.gas_refund);
 }
