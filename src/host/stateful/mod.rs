@@ -117,6 +117,12 @@ impl StatefulHost {
     pub fn add_account(&mut self, address: Address, account: Account) {
         self.accounts.insert(address, account);
     }
+    pub fn debug_get_storage(&self, address: Address, key: U256) -> U256 {
+        self.accounts
+            .get(&address)
+            .and_then(|account| account.storage.get(&key).map(|value| value.current_value))
+            .unwrap_or_else(U256::zero)
+    }
 }
 
 #[allow(unused_variables)]
