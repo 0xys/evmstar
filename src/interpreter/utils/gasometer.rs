@@ -65,8 +65,10 @@ pub fn calc_sstore_gas_refund(new_value: U256, revision: Revision, diff: Storage
     let is_eip1283 = revision >= Revision::Istanbul || revision == Revision::Constantinople;
     
     if !is_eip1283 {
-        if new_value.is_zero() {
+        if diff.current != new_value && !diff.current.is_zero() && new_value.is_zero() {
             return SSTORE_CLEAR;
+        }else{
+            return 0;
         }
     }
 

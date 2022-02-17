@@ -119,6 +119,40 @@ fn test_extcodehash_warm() {
 }
 
 #[test]
+fn test_storage_legacy() {
+    test_storage(hex!("60006000556000600055").to_vec(), 10012, 0, 0, Revision::Homestead);
+    test_storage(hex!("60006000556000600055").to_vec(), 10012, 15000, 0x01, Revision::Homestead);
+    test_storage(hex!("60006000556000600055").to_vec(), 10012, 0, 0x00, Revision::Homestead);
+    test_storage(hex!("60006000556000600055").to_vec(), 10012, 15000, 0x01, Revision::Homestead);
+
+    test_storage(hex!("600160005560006000556000600055").to_vec(), 30018, 15000, 0x00, Revision::Homestead);
+    test_storage(hex!("600160005560006000556000600055").to_vec(), 15018, 15000, 0x01, Revision::Homestead);
+    test_storage(hex!("600060005560016000556000600055").to_vec(), 30018, 15000, 0x00, Revision::Homestead);
+    test_storage(hex!("600060005560016000556000600055").to_vec(), 15018, 30000, 0x01, Revision::Homestead);
+    test_storage(hex!("600060005560006000556001600055").to_vec(), 30018,     0, 0x00, Revision::Homestead);
+    test_storage(hex!("600060005560006000556001600055").to_vec(), 15018, 15000, 0x01, Revision::Homestead);
+}
+
+fn test_storage(code: Vec<u8>, gas_used: i64, gas_refund: i64, original: usize, revision: Revision) {
+    let mut host = StatefulHost::new_with(get_default_context());
+    host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
+
+    let mut builder = Code::builder();
+    let code = builder.append(&code);
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+
+    let mut executor = Executor::new_with(Box::new(host), true, revision);
+    let output = executor.execute_raw_with(context);
+
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::default(), output.data);
+    assert_eq!(gas_used, consumed_gas(output.gas_left));
+    assert_eq!(gas_refund, output.gas_refund);
+}
+
+#[test]
 /// test case from: https://eips.ethereum.org/EIPS/eip-1283
 fn test_eip1283_1(){// 1
     let host = StatefulHost::new_with(get_default_context());
