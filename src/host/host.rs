@@ -66,7 +66,8 @@ impl Host for TransientHost {
             status_code: StatusCode::Success,
             create_address: None,
             data: Bytes::default(),
-            size: 0
+            size: 0,
+            gas_refund: 0,
         }
     }
     fn get_tx_context(&self) -> TxContext {

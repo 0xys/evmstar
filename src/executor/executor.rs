@@ -77,10 +77,10 @@ impl Executor {
 
             match interrupt {
                 Interrupt::Return(gas_left, data) => {
-                    return Output::new_success(gas_left, data);
+                    return Output::new_success(gas_left, exec_context.refund_counter, data);
                 },
                 Interrupt::Stop(gas_left) => {
-                    return Output::new_success(gas_left, Bytes::default())
+                    return Output::new_success(gas_left, exec_context.refund_counter, Bytes::default())
                 }
                 _ => ()
             };
