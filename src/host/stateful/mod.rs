@@ -123,6 +123,18 @@ impl StatefulHost {
             .and_then(|account| account.storage.get(&key).map(|value| value.current_value))
             .unwrap_or_else(U256::zero)
     }
+    pub fn debug_set_storage(&mut self, address: Address, key: U256, new_value: U256) {
+        let value = self
+            .accounts
+            .entry(address)
+            .or_default()
+            .storage
+            .entry(key)
+            .or_default();
+
+        value.original_value = new_value;
+        value.current_value = new_value;
+    }
 }
 
 #[allow(unused_variables)]
@@ -170,11 +182,12 @@ impl Host for StatefulHost {
             }
         }
 
+        let current_value_before_set = value.current_value;
         value.current_value = new_value;
 
         return StorageDiff {
             original: value.original_value,
-            current: value.current_value,
+            current: current_value_before_set,
         }
     }
     

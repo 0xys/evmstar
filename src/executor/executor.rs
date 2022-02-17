@@ -56,12 +56,9 @@ impl Executor {
         self.host.call(msg)
     }
 
-    pub fn execute_raw(&mut self, code: &Code) -> Output {
-        let mut context = CallContext::default();
-        context.code = code.clone();
-
+    pub fn execute_raw_with(&mut self, mut context: CallContext) -> Output {
         let mut resume = Resume::Init;
-        let mut gas_left = i64::max_value();    // TODO
+        let mut gas_left = i64::max_value();
 
         let mut exec_context = ExecutionContext {
             refund_counter: 0,
@@ -90,6 +87,12 @@ impl Executor {
 
             resume = self.handle_interrupt(&interrupt);
         }
+    }
+
+    pub fn execute_raw(&mut self, code: &Code) -> Output {
+        let mut context = CallContext::default();
+        context.code = code.clone();
+        self.execute_raw_with(context)
     }
 
     fn handle_interrupt(&mut self, interrupt: &Interrupt) -> Resume {
