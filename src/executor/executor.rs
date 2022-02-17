@@ -23,6 +23,8 @@ pub struct Executor {
     revision: Revision,
 }
 
+const MAX_CODE_SIZE: usize = 0x6000;
+
 impl Executor {
     pub fn new(host: Box<dyn Host>) -> Self {
         Self {
@@ -64,6 +66,13 @@ impl Executor {
             refund_counter: 0,
             revision: self.revision
         };
+
+        if self.revision >= Revision::Spurious {
+            // EIP-170: https://eips.ethereum.org/EIPS/eip-170
+            if context.code.0.len() > MAX_CODE_SIZE {
+                return Output::new_failure(FailureKind::OutOfGas);
+            }
+        }
 
         loop {
             let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut exec_context, &mut gas_left);
