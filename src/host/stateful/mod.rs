@@ -7,7 +7,7 @@ use std::{
 
 use crate::host::Host;
 use crate::model::evmc::{
-    Message, Output, TxContext, AccessStatus, StatusCode, StorageDiff, StorageStatus,
+    Message, Output, TxContext, AccessStatus, StatusCode, StorageStatus, StorageStatusKind,
 };
 use hex_literal::hex;
 
@@ -163,7 +163,7 @@ impl Host for StatefulHost {
             .unwrap_or_else(U256::zero)
     }
 
-    fn set_storage(&mut self, address: Address, key: U256, new_value: U256) -> StorageDiff {
+    fn set_storage(&mut self, address: Address, key: U256, new_value: U256) -> StorageStatus {
         let mut record = self.recorded.lock().unwrap();
         record.record_account_access(address);
 
@@ -181,33 +181,33 @@ impl Host for StatefulHost {
 
         // Follow https://eips.ethereum.org/EIPS/eip-1283 specification.
         if value.current_value == new_value {
-            return StorageDiff{
+            return StorageStatus{
                 original: value.original_value,
                 current: value.current_value,
-                status: StorageStatus::Unchanged,
+                kind: StorageStatusKind::Unchanged
             }
         }
 
-        let status = if value.dirty {
-            StorageStatus::ModifiedAgain
+        let kind = if value.dirty {
+            StorageStatusKind::ModifiedAgain
         }else{
             value.dirty = true;
             if value.current_value.is_zero() {
-                StorageStatus::Added
+                StorageStatusKind::Added
             }else if new_value.is_zero() {
-                StorageStatus::Deleted
+                StorageStatusKind::Deleted
             }else{
-                StorageStatus::Modified
+                StorageStatusKind::Modified
             }
         };
 
         let current_value_before_set = value.current_value;
         value.current_value = new_value;
 
-        return StorageDiff {
+        return StorageStatus {
             original: value.original_value,
             current: current_value_before_set,
-            status: status,
+            kind: kind
         }
     }
     

@@ -94,24 +94,24 @@ pub enum FailureKind {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum StorageStatus {
+pub enum StorageStatusKind {
     Added,
     Modified,
     ModifiedAgain,
     Unchanged,
     Deleted,
 }
-impl Default for StorageStatus {
+impl Default for StorageStatusKind {
     fn default() -> Self {
         Self::Unchanged
     }
 }
 
 #[derive(Clone, Copy, Debug, Default)]
-pub struct StorageDiff {
+pub struct StorageStatus {
     pub original: U256,
     pub current: U256,
-    pub status: StorageStatus,
+    pub kind: StorageStatusKind,
 }
 
 /// https://evmc.ethereum.org/structevmc__tx__context.html

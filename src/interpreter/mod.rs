@@ -10,7 +10,7 @@ use bytes::Bytes;
 use crate::model::evmc::{
     TxContext,
     AccessStatus,
-    StorageDiff,
+    StorageStatus,
 };
 
 pub type StorageKey = U256;
@@ -48,7 +48,7 @@ pub enum Resume {
     Balance(U256),
     Context(ContextKind, TxContext),
     GetStorage(StorageValue, AccessStatus),
-    SetStorage(StorageValue, AccessStatus, StorageDiff),
+    SetStorage(StorageValue, AccessStatus, StorageStatus),
     Blockhash(U256),
     ExtCodeHash(U256, AccessStatus),
     Unknown,

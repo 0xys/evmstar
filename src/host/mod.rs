@@ -4,7 +4,7 @@ pub mod stateful;
 use ethereum_types::{Address, U256};
 
 use crate::model::evmc::{
-    Message, Output, TxContext, AccessStatus, StorageDiff
+    Message, Output, TxContext, AccessStatus, StorageStatus
 };
 
 /// EVMC Host interface
@@ -14,7 +14,7 @@ pub trait Host {
     fn get_storage(&self, address: Address, key: U256) -> U256;
 
     // slightly modified StorageStatus struct for the ease of gas cost/refund calculation
-    fn set_storage(&mut self, address: Address, key: U256, value: U256) -> StorageDiff;
+    fn set_storage(&mut self, address: Address, key: U256, value: U256) -> StorageStatus;
     
     fn get_balance(&self, address: Address) -> U256;
     fn get_code_size(&self, address: Address) -> U256;
