@@ -50,9 +50,9 @@ impl Output {
         }
     }
 
-    pub fn new_failure(failure_kind: FailureKind) -> Self {
+    pub fn new_failure(failure_kind: FailureKind, gas_left: i64) -> Self {
         Output {
-            gas_left: i64::max_value(),
+            gas_left: gas_left,
             status_code: StatusCode::Failure(failure_kind),
             create_address: None,
             data: Bytes::default(),

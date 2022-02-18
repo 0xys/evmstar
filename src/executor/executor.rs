@@ -70,7 +70,7 @@ impl Executor {
         if self.revision >= Revision::Spurious {
             // EIP-170: https://eips.ethereum.org/EIPS/eip-170
             if context.code.0.len() > MAX_CODE_SIZE {
-                return Output::new_failure(FailureKind::OutOfGas);
+                return Output::new_failure(FailureKind::OutOfGas, 0);
             }
         }
 
@@ -79,8 +79,9 @@ impl Executor {
             
             let interrupt = match interrupt {
                 Ok(i) => i,
-                Err(failure_kind) => {
-                    return Output::new_failure(failure_kind);
+                Err(failure_kind) => match failure_kind {
+                    FailureKind::Revert => return Output::new_failure(failure_kind, gas_left),
+                    _ => return Output::new_failure(failure_kind, 0),
                 }
             };
 
