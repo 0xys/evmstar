@@ -22,7 +22,9 @@ use crate::interpreter::{
     Interrupt, Resume, ContextKind,
     utils::{
         exp,
-        memory::{mload, mstore, mstore8, ret},
+        memory::{
+            mload, mstore, mstore8, ret, mstore_data,
+        },
         gasometer::{calc_sstore_gas_cost, calc_sstore_gas_refund},
     },
 };
@@ -533,12 +535,46 @@ impl Interpreter {
                 stack.push(context.value)?;
                 Ok(None)
             },
-
-            OpCode::GASPRICE => {
-                Self::consume_constant_gas(gas_left, 2)?;
-                Ok(Some(Interrupt::Context(ContextKind::GasPrice)))
+            OpCode::CALLDATALOAD => {
+                Self::consume_constant_gas(gas_left, 3)?;
+                let offset = stack.pop()?;
+                let calldata = context.calldata.get_word(offset.as_usize());
+                stack.push_unchecked(calldata);
+                Ok(None)
             },
-
+            OpCode::CALLDATASIZE => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                let calldata_length = U256::from(context.calldata.0.len());
+                stack.push(calldata_length)?;
+                Ok(None)
+            },
+            OpCode::CALLDATACOPY => {
+                let dest_offset = stack.pop()?;
+                let offset = stack.pop()?;
+                let size = stack.pop()?;
+                let data = context.calldata.get_range(offset.as_usize(), size.as_usize());
+                let cost = mstore_data(dest_offset, memory, &data, *gas_left)?;
+                Self::consume_constant_gas(gas_left, cost)?;
+                Ok(None)
+            },
+            OpCode::CODESIZE => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                let size = context.code.0.len();
+                stack.push(U256::from(size))?;
+                Ok(None)
+            },
+            OpCode::CODECOPY => {
+                let dest_offset = stack.pop()?;
+                let offset = stack.pop()?;
+                let size = stack.pop()?;
+                let cost = mstore_data(dest_offset, memory, &context.code.get_range(offset.as_usize(), size.as_usize()), *gas_left)?;
+                Self::consume_constant_gas(gas_left, cost)?;
+                Ok(None)
+            },
+            // OpCode::EXTCODESIZE => {
+            // },
+            // OpCode::EXTCODECOPY => {
+            // },
             OpCode::EXTCODEHASH => {
                 let address = stack.pop()?;
                 let address = u256_to_address(address);
@@ -564,6 +600,10 @@ impl Interpreter {
             OpCode::DIFFICULTY => {
                 Self::consume_constant_gas(gas_left, 2)?;
                 Ok(Some(Interrupt::Context(ContextKind::Difficulty)))
+            },
+            OpCode::GASPRICE => {
+                Self::consume_constant_gas(gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::GasPrice)))
             },
             OpCode::GASLIMIT => {
                 Self::consume_constant_gas(gas_left, 2)?;

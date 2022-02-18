@@ -29,6 +29,21 @@ impl Code {
         self.0.append(&mut code.0);
         self
     }
+
+    pub fn get_range(&self, offset: usize, size: usize) -> Vec<u8> {
+        if offset + size < self.0.len() {
+            let data = &self.0[offset..offset+size];
+            Vec::from(data)
+        }else{
+            let word = &self.0[offset..self.0.len()];
+            let padding_size = size - word.len();
+            let mut word = Vec::from(word);
+            for _ in 0..padding_size {
+                word.push(0u8);
+            }
+            word
+        }
+    }
 }
 
 impl From<&str> for Code {
