@@ -2,6 +2,7 @@ pub mod host;
 pub mod stateful;
 
 use ethereum_types::{Address, U256};
+use bytes::Bytes;
 
 use crate::model::evmc::{
     Message, Output, TxContext, AccessStatus, StorageStatus
@@ -27,6 +28,7 @@ pub trait Host {
     fn access_account(&mut self, address: Address) -> AccessStatus;
     fn access_storage(&mut self, address: Address, key: U256) -> AccessStatus;
 
-    // extension
+    // extensions
     fn get_blockhash(&self, height: usize) -> U256;
+    fn get_code(&self, address: Address, offset: usize, size: usize) -> Bytes;
 }

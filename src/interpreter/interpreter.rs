@@ -98,18 +98,6 @@ impl Interpreter {
                     continue;
                 }
                 
-                // handle CODECOPY instruction
-                if opcode == OpCode::CODECOPY {
-                    // let dest_offset = context.stack.pop()?;
-                    // let offset = context.stack.pop()?;
-                    // let size = context.stack.pop()?;
-
-                    // let dest_offset = dest_offset.as_usize();
-                    // let offset = offset.as_usize();
-                    // let size = size.as_usize();
-                    panic!("codecopy not implemented");
-                }
-
                 match self.next_instruction(&opcode, call_context, exec_context, gas_left)? {
                     None => (),
                     Some(i) => {
@@ -195,19 +183,37 @@ impl Interpreter {
             },
             Resume::GetCodeSize(size, access_status) => {
                 stack.push_unchecked(size);
-                let cost = if exec_context.revision >= Revision::Berlin {
-                    match access_status {
-                        AccessStatus::Warm => 100,
-                        AccessStatus::Cold => 2600,
-                    }
-                }else{
-                    if exec_context.revision >= Revision::Tangerine {
-                        700
+                let cost =
+                    if exec_context.revision >= Revision::Berlin {
+                        match access_status {
+                            AccessStatus::Warm => 100,
+                            AccessStatus::Cold => 2600,
+                        }
                     }else{
-                        20
-                    }
-                };
+                        if exec_context.revision >= Revision::Tangerine {
+                            700
+                        }else{
+                            20
+                        }
+                    };
                 Self::consume_constant_gas(gas_left, cost)?;
+            },
+            Resume::GetCode(code, access_status, dest_offset) => {
+                let memory_cost = mstore_data(U256::from(dest_offset), memory, &code, *gas_left)?;
+                let account_access_cost = 
+                    if exec_context.revision >= Revision::Berlin {
+                        match access_status {
+                            AccessStatus::Warm => 100,
+                            AccessStatus::Cold => 2600,
+                        }
+                    }else{
+                        if exec_context.revision >= Revision::Tangerine {
+                            700
+                        }else{
+                            20
+                        }
+                    };
+                Self::consume_constant_gas(gas_left, account_access_cost + memory_cost)?;
             },
             _ => {}
         }
@@ -592,8 +598,14 @@ impl Interpreter {
                 let address = u256_to_address(address);
                 Ok(Some(Interrupt::GetCodeSize(address)))
             },
-            // OpCode::EXTCODECOPY => {
-            // },
+            OpCode::EXTCODECOPY => {
+                let address = stack.pop()?;
+                let address = u256_to_address(address);
+                let dest_offset = stack.pop()?;
+                let offset = stack.pop()?;
+                let size = stack.pop()?;
+                Ok(Some(Interrupt::GetCode(address, dest_offset.as_usize(), offset.as_usize(), size.as_usize())))
+            },
             OpCode::EXTCODEHASH => {
                 let address = stack.pop()?;
                 let address = u256_to_address(address);

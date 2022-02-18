@@ -322,4 +322,7 @@ impl Host for StatefulHost {
     fn get_blockhash(&self, height: usize) -> U256 {
         U256::from(height)
     }
+    fn get_code(&self, address: Address, offset: usize, size: usize) -> Bytes {
+        panic!("get_code not implemented.");
+    }
 }

@@ -124,6 +124,15 @@ impl Executor {
                 let size = self.host.get_code_size(*address);
                 Resume::GetCodeSize(size, access_status)
             },
+            Interrupt::GetCode(address, dest_offset, offset, size) => {
+                let access_status = if self.revision >= Revision::Berlin {
+                    self.host.access_account(*address)
+                }else{
+                    AccessStatus::Warm
+                };
+                let code = self.host.get_code(*address, *offset, *size);
+                Resume::GetCode(code, access_status, *dest_offset)
+            },
             Interrupt::ExtCodeHash(address) => {
                 let access_status = self.host.access_account(*address);
                 let hash = self.host.get_code_hash(*address);
