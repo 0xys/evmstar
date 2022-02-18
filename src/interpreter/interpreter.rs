@@ -192,7 +192,23 @@ impl Interpreter {
                 exec_context.refund_counter += calc_sstore_gas_refund(new_value, exec_context.revision, storage_status);
                 let gas = calc_sstore_gas_cost(new_value, exec_context.revision, access_status, storage_status);
                 Self::consume_constant_gas(gas_left, gas)?;
-            }
+            },
+            Resume::GetCodeSize(size, access_status) => {
+                stack.push_unchecked(size);
+                let cost = if exec_context.revision >= Revision::Berlin {
+                    match access_status {
+                        AccessStatus::Warm => 100,
+                        AccessStatus::Cold => 2600,
+                    }
+                }else{
+                    if exec_context.revision >= Revision::Tangerine {
+                        700
+                    }else{
+                        20
+                    }
+                };
+                Self::consume_constant_gas(gas_left, cost)?;
+            },
             _ => {}
         }
 
@@ -571,8 +587,11 @@ impl Interpreter {
                 Self::consume_constant_gas(gas_left, cost)?;
                 Ok(None)
             },
-            // OpCode::EXTCODESIZE => {
-            // },
+            OpCode::EXTCODESIZE => {
+                let address = stack.pop()?;
+                let address = u256_to_address(address);
+                Ok(Some(Interrupt::GetCodeSize(address)))
+            },
             // OpCode::EXTCODECOPY => {
             // },
             OpCode::EXTCODEHASH => {

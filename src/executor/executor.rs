@@ -115,6 +115,15 @@ impl Executor {
                 let context = self.host.get_tx_context();
                 Resume::Context(*kind, context)
             },
+            Interrupt::GetCodeSize(address) => {
+                let access_status = if self.revision >= Revision::Berlin {
+                    self.host.access_account(*address)
+                }else{
+                    AccessStatus::Warm
+                };
+                let size = self.host.get_code_size(*address);
+                Resume::GetCodeSize(size, access_status)
+            },
             Interrupt::ExtCodeHash(address) => {
                 let access_status = self.host.access_account(*address);
                 let hash = self.host.get_code_hash(*address);

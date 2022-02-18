@@ -51,6 +51,7 @@ pub enum Resume {
     SetStorage(StorageValue, AccessStatus, StorageStatus),
     Blockhash(U256),
     ExtCodeHash(U256, AccessStatus),
+    GetCodeSize(U256, AccessStatus),
     Unknown,
 }
 
