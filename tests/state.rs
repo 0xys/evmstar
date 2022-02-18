@@ -119,24 +119,41 @@ fn test_extcodehash_warm() {
 }
 
 #[test]
-fn test_storage_legacy() {
-    test_storage(hex!("60006000556000600055").to_vec(), 10012, 0, 0, Revision::Homestead);
-    test_storage(hex!("60006000556000600055").to_vec(), 10012, 15000, 0x01, Revision::Homestead);
-    test_storage(hex!("60006000556000600055").to_vec(), 10012, 0, 0x00, Revision::Homestead);
-    test_storage(hex!("60006000556000600055").to_vec(), 10012, 15000, 0x01, Revision::Homestead);
-
-    test_storage(hex!("600160005560006000556000600055").to_vec(), 30018, 15000, 0x00, Revision::Homestead);
-    test_storage(hex!("600160005560006000556000600055").to_vec(), 15018, 15000, 0x01, Revision::Homestead);
-    test_storage(hex!("600060005560016000556000600055").to_vec(), 30018, 15000, 0x00, Revision::Homestead);
-    test_storage(hex!("600060005560016000556000600055").to_vec(), 15018, 30000, 0x01, Revision::Homestead);
-    test_storage(hex!("600060005560006000556001600055").to_vec(), 30018,     0, 0x00, Revision::Homestead);
-    test_storage(hex!("600060005560006000556001600055").to_vec(), 15018, 15000, 0x01, Revision::Homestead);
-
-    test_storage(hex!("6000600055600160005560006000556001600055").to_vec(), 35024, 15000, 0x00, Revision::Homestead);
-    test_storage(hex!("6000600055600160005560006000556001600055").to_vec(), 20024, 30000, 0x01, Revision::Homestead);
+fn test_pre_eip1283_sstore() {
+    for r in Revision::iter() {
+        if r < Revision::Constantinople || r == Revision::Petersburg {
+            test_sstore_of(r);
+        }
+    }
 }
 
-fn test_storage(code: Vec<u8>, gas_used: i64, gas_refund: i64, original: usize, revision: Revision) {
+fn test_sstore_of(revision: Revision) {
+
+    let original = 0x00;
+    test_sstore_legacy_logic(hex!("60006000556000600055").to_vec(), 10012,     0, original, revision);
+    test_sstore_legacy_logic(hex!("60006000556001600055").to_vec(), 25012,     0, original, revision);
+    test_sstore_legacy_logic(hex!("60016000556000600055").to_vec(), 25012, 15000, original, revision);
+    test_sstore_legacy_logic(hex!("60016000556002600055").to_vec(), 25012,     0, original, revision);
+    test_sstore_legacy_logic(hex!("60016000556001600055").to_vec(), 25012,     0, original, revision);
+
+    let original = 0x01;
+    test_sstore_legacy_logic(hex!("60006000556000600055").to_vec(), 10012, 15000, original, revision);
+    test_sstore_legacy_logic(hex!("60006000556001600055").to_vec(), 25012, 15000, original, revision);
+    test_sstore_legacy_logic(hex!("60006000556002600055").to_vec(), 25012, 15000, original, revision);
+    test_sstore_legacy_logic(hex!("60026000556000600055").to_vec(), 10012, 15000, original, revision);
+    test_sstore_legacy_logic(hex!("60026000556003600055").to_vec(), 10012,     0, original, revision);
+
+    test_sstore_legacy_logic(hex!("60026000556001600055").to_vec(), 10012,     0, original, revision);
+    test_sstore_legacy_logic(hex!("60026000556002600055").to_vec(), 10012,     0, original, revision);
+    test_sstore_legacy_logic(hex!("60016000556000600055").to_vec(), 10012, 15000, original, revision);
+    test_sstore_legacy_logic(hex!("60016000556002600055").to_vec(), 10012,     0, original, revision);
+    test_sstore_legacy_logic(hex!("60016000556001600055").to_vec(), 10012,     0, original, revision);
+
+    test_sstore_legacy_logic(hex!("600160005560006000556001600055").to_vec(), 45018, 15000, 0x00, revision);
+    test_sstore_legacy_logic(hex!("600060005560016000556000600055").to_vec(), 30018, 30000, 0x01, revision);
+}
+
+fn test_sstore_legacy_logic(code: Vec<u8>, gas_used: i64, gas_refund: i64, original: usize, revision: Revision) {
     let mut host = StatefulHost::new_with(get_default_context());
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
