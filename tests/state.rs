@@ -314,7 +314,7 @@ fn test_calldatacopy_2() {
 
     let mut builder = Code::builder();
 
-    // 
+    // 7feeee0000000000000000000000000000000000000000000000000000000000006000526020600060103760206000f3
     let code = builder
         .append_opcode(OpCode::PUSH32)
         .append("eeee000000000000000000000000000000000000000000000000000000000000")
@@ -338,4 +338,85 @@ fn test_calldatacopy_2() {
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::from(bytes), output.data);
     assert_eq!(36, consumed_gas(output.gas_left));
+}
+
+#[test]
+fn test_codesize() {
+    let host = StatefulHost::new_with(get_default_context());
+
+    let mut builder = Code::builder();
+
+    // 3860005260206000f3
+    let code = builder
+        .append_opcode(OpCode::CODESIZE)
+        .append("6000")
+        .append_opcode(OpCode::MSTORE)
+        .append("60206000")
+        .append_opcode(OpCode::RETURN);
+
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+
+    let mut executor = Executor::new_with(Box::new(host), true, Revision::Berlin);
+    let output = executor.execute_raw_with(context);
+
+    let bytes = Vec::from(hex!("0000000000000000000000000000000000000000000000000000000000000009"));
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(bytes), output.data);
+    assert_eq!(17, consumed_gas(output.gas_left));
+}
+
+#[test]
+fn test_codecopy() {
+    let host = StatefulHost::new_with(get_default_context());
+
+    let mut builder = Code::builder();
+
+    // 600c600060003960206000f3
+    let code = builder
+        .append("600c60006000")
+        .append_opcode(OpCode::CODECOPY)
+        .append("60206000")
+        .append_opcode(OpCode::RETURN);
+
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+
+    let mut executor = Executor::new_with(Box::new(host), true, Revision::Berlin);
+    let output = executor.execute_raw_with(context);
+
+    let bytes = Vec::from(hex!("600c600060003960206000f30000000000000000000000000000000000000000"));
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(bytes), output.data);
+    assert_eq!(24, consumed_gas(output.gas_left));
+}
+
+#[test]
+fn test_codecopy_out_of_bounds() {
+    let host = StatefulHost::new_with(get_default_context());
+
+    let mut builder = Code::builder();
+
+    // 6040600060003960406000f3
+    let code = builder
+        .append_opcode(OpCode::PUSH1)
+        .append(64) // out of bounds
+        .append("60006000")
+        .append_opcode(OpCode::CODECOPY)
+        .append("60406000")
+        .append_opcode(OpCode::RETURN);
+
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+
+    let mut executor = Executor::new_with(Box::new(host), true, Revision::Berlin);
+    let output = executor.execute_raw_with(context);
+
+    let bytes = Vec::from(hex!("6040600060003960406000f300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"));
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(bytes), output.data);
+    assert_eq!(30, consumed_gas(output.gas_left));
 }

@@ -589,8 +589,8 @@ impl Interpreter {
                 let dest_offset = stack.pop()?;
                 let offset = stack.pop()?;
                 let size = stack.pop()?;
-                let cost = mstore_data(dest_offset, memory, &context.code.get_range(offset.as_usize(), size.as_usize()), *gas_left)?;
-                Self::consume_constant_gas(gas_left, cost)?;
+                let dynamic_cost = mstore_data(dest_offset, memory, &context.code.get_range(offset.as_usize(), size.as_usize()), *gas_left)?;
+                Self::consume_constant_gas(gas_left, 3 + dynamic_cost)?;    // static cost of `3` is added here.
                 Ok(None)
             },
             OpCode::EXTCODESIZE => {
