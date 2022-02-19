@@ -1,6 +1,5 @@
 use bytes::Bytes;
 use ethereum_types::{U256, Address};
-use hex_literal::hex;
 
 use evmstar::host::stateful::{
     StatefulHost,
@@ -11,7 +10,9 @@ use evmstar::executor::{
 };
 #[allow(unused_imports)]
 use evmstar::model::{
-    code::{Code},
+    code::{
+        Code, Append,
+    },
     opcode::OpCode,
     evmc::{
         StatusCode, FailureKind,
@@ -47,7 +48,7 @@ fn test_eip2200_1(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60006000556000600055"));
+    let code = builder.append("60006000556000600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -68,7 +69,7 @@ fn test_eip2200_2(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60006000556001600055"));
+    let code = builder.append("60006000556001600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -89,7 +90,7 @@ fn test_eip2200_3(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60016000556000600055"));
+    let code = builder.append("60016000556000600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -110,7 +111,7 @@ fn test_eip2200_4(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60016000556002600055"));
+    let code = builder.append("60016000556002600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -131,7 +132,7 @@ fn test_eip2200_5(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60016000556001600055"));
+    let code = builder.append("60016000556001600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -152,7 +153,7 @@ fn test_eip2200_6(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60006000556000600055"));
+    let code = builder.append("60006000556000600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -173,7 +174,7 @@ fn test_eip2200_7(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60006000556001600055"));
+    let code = builder.append("60006000556001600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -194,7 +195,7 @@ fn test_eip2200_8(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60006000556002600055"));
+    let code = builder.append("60006000556002600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -215,7 +216,7 @@ fn test_eip2200_9(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60026000556000600055"));
+    let code = builder.append("60026000556000600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -236,7 +237,7 @@ fn test_eip2200_10(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60026000556003600055"));
+    let code = builder.append("60026000556003600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -257,7 +258,7 @@ fn test_eip2200_11(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60026000556001600055"));
+    let code = builder.append("60026000556001600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -278,7 +279,7 @@ fn test_eip2200_12(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60026000556002600055"));
+    let code = builder.append("60026000556002600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -299,7 +300,7 @@ fn test_eip2200_13(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60016000556000600055"));
+    let code = builder.append("60016000556000600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -320,7 +321,7 @@ fn test_eip2200_14(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60016000556002600055"));
+    let code = builder.append("60016000556002600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -341,7 +342,7 @@ fn test_eip2200_15(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("60016000556001600055"));
+    let code = builder.append("60016000556001600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -362,7 +363,7 @@ fn test_eip2200_16(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("600160005560006000556001600055"));
+    let code = builder.append("600160005560006000556001600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -383,7 +384,7 @@ fn test_eip2200_17(){
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&hex!("600060005560016000556000600055"));
+    let code = builder.append("600060005560016000556000600055");
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();

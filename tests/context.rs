@@ -5,7 +5,9 @@ use evmstar::host::host::TransientHost;
 use evmstar::executor::executor::Executor;
 #[allow(unused_imports)]
 use evmstar::model::{
-    code::{Code},
+    code::{
+        Code, Append,
+    },
     opcode::OpCode,
     evmc::{
         StatusCode, FailureKind,
@@ -42,12 +44,12 @@ fn test_gas_price() {
     let code = builder
         .append_opcode(OpCode::GASPRICE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::MSTORE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -67,12 +69,12 @@ fn test_coinbase() {
     let code = builder
         .append_opcode(OpCode::COINBASE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::MSTORE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -92,12 +94,12 @@ fn test_block_number() {
     let code = builder
         .append_opcode(OpCode::NUMBER)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::MSTORE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -117,12 +119,12 @@ fn test_block_timestamp() {
     let code = builder
         .append_opcode(OpCode::TIMESTAMP)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::MSTORE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -142,12 +144,12 @@ fn test_gas_limit() {
     let code = builder
         .append_opcode(OpCode::GASLIMIT)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::MSTORE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -167,12 +169,12 @@ fn test_base_fee() {
     let code = builder
         .append_opcode(OpCode::BASEFEE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::MSTORE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -192,12 +194,12 @@ fn test_chain_id() {
     let code = builder
         .append_opcode(OpCode::CHAINID)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::MSTORE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -217,12 +219,12 @@ fn test_difficulty() {
     let code = builder
         .append_opcode(OpCode::DIFFICULTY)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::MSTORE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -241,15 +243,15 @@ fn test_blockhash() {
 
     let code = builder
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x01])
+        .append("01")
         .append_opcode(OpCode::BLOCKHASH)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::MSTORE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);

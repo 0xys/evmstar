@@ -11,7 +11,9 @@ use evmstar::executor::{
 };
 #[allow(unused_imports)]
 use evmstar::model::{
-    code::{Code},
+    code::{
+        Code, Append,
+    },
     opcode::OpCode,
     evmc::{
         StatusCode, FailureKind,
@@ -48,7 +50,7 @@ fn sstore_eip2929(code: Vec<u8>, gas_used: i64, gas_refund: i64, warm: bool, ori
         }
     
         let mut builder = Code::builder();
-        let code = builder.append(&code);
+        let code = builder.append(code.as_slice());
         let mut context = CallContext::default();
         context.code = code.clone();
         context.to = default_address();

@@ -1,6 +1,7 @@
 use serde::Serialize;
 use arrayvec::ArrayVec;
 use ethereum_types::U256;
+use hex::{decode};
 
 use crate::model::evmc::{
     FailureKind,
@@ -148,6 +149,23 @@ impl Calldata {
                 word.push(0u8);
             }
             word
+        }
+    }
+}
+
+impl From<&str> for Calldata {
+    fn from(hex: &str) -> Self {
+        let hex = decode(hex).unwrap();
+        Self {
+            0: Vec::from(hex)
+        }
+    }
+}
+
+impl From<Vec<u8>> for Calldata {
+    fn from(data: Vec<u8>) -> Self {
+        Self {
+            0: data
         }
     }
 }

@@ -20,10 +20,10 @@ impl Code {
         self
     }
 
-    pub fn append<'a>(&'a mut self, data: &[u8]) -> &'a mut Self {
-        self.0.append(&mut Vec::from(data));
-        self
-    }
+    // pub fn append<'a>(&'a mut self, data: &[u8]) -> &'a mut Self {
+    //     self.0.append(&mut Vec::from(data));
+    //     self
+    // }
 
     pub fn append_code<'a>(&'a mut self, code: &mut Code) -> &'a mut Self {
         self.0.append(&mut code.0);
@@ -59,6 +59,29 @@ impl From<&[u8]> for Code {
         Code {
             0: Vec::from(u8a)
         }
+    }
+}
+
+pub trait Append<T>: Sized {
+    fn append<'a>(&'a mut self, _: T) -> &'a mut Self;
+}
+impl Append<&str> for Code {
+    fn append<'a>(&'a mut self, hex: &str) -> &'a mut Self {
+        let mut u8a = decode(hex).unwrap();
+        self.0.append(&mut u8a);
+        self
+    }
+}
+impl Append<&[u8]> for Code {
+    fn append<'a>(&'a mut self, data: &[u8]) -> &'a mut Self {
+        self.0.append(&mut Vec::from(data));
+        self
+    }
+}
+impl Append<u8> for Code {
+    fn append<'a>(&'a mut self, data: u8) -> &'a mut Self {
+        self.0.append(&mut Vec::from([data]));
+        self
     }
 }
 

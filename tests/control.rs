@@ -4,7 +4,9 @@ use evmstar::host::host::TransientHost;
 use evmstar::executor::executor::Executor;
 #[allow(unused_imports)]
 use evmstar::model::{
-    code::{Code},
+    code::{
+        Code, Append,
+    },
     opcode::OpCode,
     evmc::{
         StatusCode, FailureKind,
@@ -27,19 +29,19 @@ pub fn test_pc() {
         .append_opcode(OpCode::PC)
         .append_opcode(OpCode::POP)
         .append_opcode(OpCode::PUSH3)
-        .append(&[0x00, 0x00, 0x00])
+        .append("000000")
         .append_opcode(OpCode::POP)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::POP)
         .append_opcode(OpCode::PC)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::MSTORE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -58,23 +60,23 @@ pub fn test_jump() {
 
     let code = builder
         .append_opcode(OpCode::PUSH1)   // 0
-        .append(&[0xaa])                // 1
+        .append("aa")                // 1
         .append_opcode(OpCode::PUSH1)   // 2
-        .append(&[0x00])                // 3
+        .append("00")                // 3
         .append_opcode(OpCode::MSTORE)  // 4
         .append_opcode(OpCode::PUSH1)   // 5
-        .append(&[13])                  // 6 (jump to 13)
+        .append(13)                  // 6 (jump to 13)
         .append_opcode(OpCode::JUMP)    // 7
         .append_opcode(OpCode::PUSH1)   // 8
-        .append(&[0xff])                // 9
+        .append("ff")                // 9
         .append_opcode(OpCode::PUSH1)   // 10
-        .append(&[0x00])                // 11
+        .append("00")                // 11
         .append_opcode(OpCode::MSTORE)  // 12
         .append_opcode(OpCode::JUMPDEST)// 13
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -93,23 +95,23 @@ pub fn test_jump_bad() {
 
     let code = builder
         .append_opcode(OpCode::PUSH1)   // 0
-        .append(&[0xaa])                // 1
+        .append("aa")                // 1
         .append_opcode(OpCode::PUSH1)   // 2
-        .append(&[0x00])                // 3
+        .append("00")                // 3
         .append_opcode(OpCode::MSTORE)  // 4
         .append_opcode(OpCode::PUSH1)   // 5
-        .append(&[13])                  // 6 (jump to 13)
+        .append(13)                  // 6 (jump to 13)
         .append_opcode(OpCode::JUMP)    // 7
         .append_opcode(OpCode::PUSH1)   // 8
-        .append(&[0xff])                // 9
+        .append("ff")                // 9
         .append_opcode(OpCode::PUSH1)   // 10
-        .append(&[0x00])                // 11
+        .append("00")                // 11
         .append_opcode(OpCode::MSTORE)  // 12
         .append_opcode(OpCode::PC)      // 13 (not JUMPDEST)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -126,25 +128,25 @@ pub fn test_jumpi() {
 
     let code = builder
         .append_opcode(OpCode::PUSH1)   // 0
-        .append(&[0xaa])                // 1
+        .append("aa")                // 1
         .append_opcode(OpCode::PUSH1)   // 2
-        .append(&[0x00])                // 3
+        .append("00")                // 3
         .append_opcode(OpCode::MSTORE)  // 4
         .append_opcode(OpCode::PUSH1)   // 5
-        .append(&[0x01])                // 6 (not zero)
+        .append("01")                // 6 (not zero)
         .append_opcode(OpCode::PUSH1)   // 7
-        .append(&[15])                  // 8 (jumpi to 15)
+        .append(15)                  // 8 (jumpi to 15)
         .append_opcode(OpCode::JUMPI)   // 9
         .append_opcode(OpCode::PUSH1)   // 10
-        .append(&[0xff])                // 11
+        .append("ff")                // 11
         .append_opcode(OpCode::PUSH1)   // 12
-        .append(&[0x00])                // 13
+        .append("00")                // 13
         .append_opcode(OpCode::MSTORE)  // 14
         .append_opcode(OpCode::JUMPDEST)// 15
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -163,25 +165,25 @@ pub fn test_jumpi_condition_unmet() {
 
     let code = builder
         .append_opcode(OpCode::PUSH1)   // 0
-        .append(&[0xaa])                // 1
+        .append("aa")                // 1
         .append_opcode(OpCode::PUSH1)   // 2
-        .append(&[0x00])                // 3
+        .append("00")                // 3
         .append_opcode(OpCode::MSTORE)  // 4
         .append_opcode(OpCode::PUSH1)   // 5
-        .append(&[0x00])                // 6 (zero)
+        .append("00")                // 6 (zero)
         .append_opcode(OpCode::PUSH1)   // 7
-        .append(&[15])                  // 8 (jumpi to 15)
+        .append(15)                  // 8 (jumpi to 15)
         .append_opcode(OpCode::JUMPI)   // 9
         .append_opcode(OpCode::PUSH1)   // 10
-        .append(&[0xff])                // 11
+        .append("ff")                // 11
         .append_opcode(OpCode::PUSH1)   // 12
-        .append(&[0x00])                // 13
+        .append("00")                // 13
         .append_opcode(OpCode::MSTORE)  // 14
         .append_opcode(OpCode::JUMPDEST)// 15
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -200,25 +202,25 @@ pub fn test_jumpi_bad() {
 
     let code = builder
         .append_opcode(OpCode::PUSH1)   // 0
-        .append(&[0xaa])                // 1
+        .append("aa")                // 1
         .append_opcode(OpCode::PUSH1)   // 2
-        .append(&[0x00])                // 3
+        .append("00")                // 3
         .append_opcode(OpCode::MSTORE)  // 4
         .append_opcode(OpCode::PUSH1)   // 5
-        .append(&[0x01])                // 6 (not zero)
+        .append("01")                // 6 (not zero)
         .append_opcode(OpCode::PUSH1)   // 7
-        .append(&[15])                  // 8 (jumpi to 15)
+        .append(15)                  // 8 (jumpi to 15)
         .append_opcode(OpCode::JUMPI)   // 9
         .append_opcode(OpCode::PUSH1)   // 10
-        .append(&[0xff])                // 11
+        .append("ff")                // 11
         .append_opcode(OpCode::PUSH1)   // 12
-        .append(&[0x00])                // 13
+        .append("00")                // 13
         .append_opcode(OpCode::MSTORE)  // 14
         .append_opcode(OpCode::PC)      // 15 (not JUMPDEST)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
