@@ -9,9 +9,13 @@ use evmstar::executor::{
     callstack::CallContext,
     executor::Executor,
 };
+use evmstar::interpreter::stack::Calldata;
+
 #[allow(unused_imports)]
 use evmstar::model::{
-    code::{Code},
+    code::{
+        Code, Append,
+    },
     opcode::OpCode,
     evmc::{
         StatusCode, FailureKind,
@@ -59,15 +63,15 @@ fn test_extcodehash_cold() {
 
     let code = builder
         .append_opcode(OpCode::PUSH3)
-        .append(&[0x12, 0x34, 0x56])
+        .append("123456")
         .append_opcode(OpCode::EXTCODEHASH)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::MSTORE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -96,18 +100,18 @@ fn test_extcodehash_warm() {
 
     let code = builder
         .append_opcode(OpCode::PUSH3)
-        .append(&[0x12, 0x34, 0x56])
+        .append("123456")
         .append_opcode(OpCode::EXTCODEHASH)
         .append_opcode(OpCode::PUSH3)
-        .append(&[0x12, 0x34, 0x56])
+        .append("123456")
         .append_opcode(OpCode::EXTCODEHASH)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::MSTORE)
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
+        .append("20")
         .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
+        .append("00")
         .append_opcode(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
@@ -158,7 +162,7 @@ fn test_sstore_legacy_logic(code: Vec<u8>, gas_used: i64, gas_refund: i64, origi
     host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
-    let code = builder.append(&code);
+    let code = builder.append(code.as_slice());
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -192,7 +196,7 @@ fn test_sload_logic(code: &Vec<u8>, gas_used: i64, revision: Revision) {
     let host = StatefulHost::new_with(get_default_context());
 
     let mut builder = Code::builder();
-    let code = builder.append(code);
+    let code = builder.append(code.as_slice());
     let mut context = CallContext::default();
     context.code = code.clone();
     context.to = default_address();
@@ -203,4 +207,135 @@ fn test_sload_logic(code: &Vec<u8>, gas_used: i64, revision: Revision) {
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::default(), output.data);
     assert_eq!(gas_used, consumed_gas(output.gas_left));
+}
+
+#[test]
+fn test_calldatasize() {
+    let host = StatefulHost::new_with(get_default_context());
+
+    let mut builder = Code::builder();
+    let code = builder.append("3660005260206000f3");
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+    context.calldata = Calldata::from("ffff");
+
+    let mut executor = Executor::new_with(Box::new(host), true, Revision::Shanghai);
+    let output = executor.execute_raw_with(context);
+
+    let bytes = Vec::from(hex!("0000000000000000000000000000000000000000000000000000000000000002"));
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(bytes), output.data);
+    assert_eq!(17, consumed_gas(output.gas_left));
+}
+
+#[test]
+fn test_calldataload() {
+    let host = StatefulHost::new_with(get_default_context());
+
+    let mut builder = Code::builder();
+    let code = builder.append("60003560005260206000f3");
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+    context.calldata = Calldata::from("ffff");
+
+    let mut executor = Executor::new_with(Box::new(host), true, Revision::Shanghai);
+    let output = executor.execute_raw_with(context);
+
+    let bytes = Vec::from(hex!("ffff000000000000000000000000000000000000000000000000000000000000"));
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(bytes), output.data);
+    assert_eq!(21, consumed_gas(output.gas_left));
+}
+
+#[test]
+fn test_calldataload_2() {
+    let host = StatefulHost::new_with(get_default_context());
+
+    let mut builder = Code::builder();
+
+    // 7feeee00000000000000000000000000000000000000000000000000000000000060005260003560105260206000f3
+    let code = builder
+        .append_opcode(OpCode::PUSH32)
+        .append("eeee000000000000000000000000000000000000000000000000000000000000")
+        .append_opcode(OpCode::PUSH1)
+        .append(0)
+        .append_opcode(OpCode::MSTORE)
+        .append_opcode(OpCode::PUSH1)
+        .append(0)
+        .append_opcode(OpCode::CALLDATALOAD)
+        .append("60105260206000f3");
+
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+    context.calldata = Calldata::from("ffff");
+
+    let mut executor = Executor::new_with(Box::new(host), true, Revision::Shanghai);
+    let output = executor.execute_raw_with(context);
+
+    let bytes = Vec::from(hex!("eeee0000000000000000000000000000ffff0000000000000000000000000000"));
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(bytes), output.data);
+    assert_eq!(33, consumed_gas(output.gas_left));
+}
+
+#[test]
+fn test_calldatacopy() {
+    let host = StatefulHost::new_with(get_default_context());
+
+    let mut builder = Code::builder();
+
+    // 6020600060003760206000f3
+    let code = builder
+        .append("602060006000")
+        .append_opcode(OpCode::CALLDATACOPY)
+        .append("60206000")
+        .append_opcode(OpCode::RETURN);
+
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+    context.calldata = Calldata::from("ffff");
+
+    let mut executor = Executor::new_with(Box::new(host), true, Revision::Berlin);
+    let output = executor.execute_raw_with(context);
+
+    let bytes = Vec::from(hex!("ffff000000000000000000000000000000000000000000000000000000000000"));
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(bytes), output.data);
+    assert_eq!(24, consumed_gas(output.gas_left));
+}
+
+#[test]
+fn test_calldatacopy_2() {
+    let host = StatefulHost::new_with(get_default_context());
+
+    let mut builder = Code::builder();
+
+    // 
+    let code = builder
+        .append_opcode(OpCode::PUSH32)
+        .append("eeee000000000000000000000000000000000000000000000000000000000000")
+        .append_opcode(OpCode::PUSH1)
+        .append(0)
+        .append_opcode(OpCode::MSTORE)
+        .append("602060006010")
+        .append_opcode(OpCode::CALLDATACOPY)
+        .append("60206000")
+        .append_opcode(OpCode::RETURN);
+
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+    context.calldata = Calldata::from("ffff");
+
+    let mut executor = Executor::new_with(Box::new(host), true, Revision::Berlin);
+    let output = executor.execute_raw_with(context);
+
+    let bytes = Vec::from(hex!("eeee0000000000000000000000000000ffff0000000000000000000000000000"));
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(bytes), output.data);
+    assert_eq!(36, consumed_gas(output.gas_left));
 }

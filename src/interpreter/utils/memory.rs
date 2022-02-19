@@ -61,6 +61,7 @@ pub fn mstore8(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i
 
 /// store variable-sized byte array into memory at `offset`
 /// any padding added will incur gas cost.
+/// return dynamic part of the cost.
 pub fn mstore_data(offset: U256, memory: &mut Memory, data: &[u8], gas_left: i64) -> Result<i64, FailureKind> {
     if offset > U256::from(MAX_BUFFER_SIZE) {
         return Err(FailureKind::ArgumentOutOfRange);
@@ -69,12 +70,12 @@ pub fn mstore_data(offset: U256, memory: &mut Memory, data: &[u8], gas_left: i64
     let min_word_size = (data.len() + 31) / 32;
 
     let offset = offset.as_usize();
-    let static_cost = try_expand_memory(offset, min_word_size, memory, gas_left)?;
-    let dynamic_cost: i64 = 3 * min_word_size as i64;
+    let expansion_cost = try_expand_memory(offset, data.len(), memory, gas_left)?;
+    let word_cost: i64 = 3 * min_word_size as i64;
 
     memory.set_range(offset, data);
 
-    Ok(static_cost + dynamic_cost)
+    Ok(expansion_cost + word_cost)
 }
 
 /// return value of `size` at `offset` in memory.
