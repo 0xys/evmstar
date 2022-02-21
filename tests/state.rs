@@ -420,3 +420,65 @@ fn test_codecopy_out_of_bounds() {
     assert_eq!(Bytes::from(bytes), output.data);
     assert_eq!(30, consumed_gas(output.gas_left));
 }
+
+fn default_contract() -> Account {
+    let mut account = Account::default();
+    account.code = Bytes::from(Vec::from(hex!("aabbccdd")));
+    account.code_hash = U256::from(0xaabbccddu32);
+    account
+}
+
+fn default_contract_address() -> Address {
+    Address::from_low_u64_be(0x11223344)
+}
+
+fn test_extcodesize_logic(gas_used: i64, revision: Revision){
+    let mut host = StatefulHost::new_with(get_default_context());
+    host.add_account(default_contract_address(), default_contract());
+
+    let mut builder = Code::builder();
+
+    let code = builder
+        // first access
+        .append_opcode(OpCode::PUSH4)
+        .append("11223344") // contract address
+        .append_opcode(OpCode::EXTCODESIZE)
+
+        // second access
+        .append_opcode(OpCode::PUSH4)
+        .append("11223344") // contract address
+        .append_opcode(OpCode::EXTCODESIZE)
+        .append("6000")
+        .append_opcode(OpCode::MSTORE)
+
+        .append("60206000")
+        .append_opcode(OpCode::RETURN);
+
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+
+    let mut executor = Executor::new_with(Box::new(host), true, revision);
+    let output = executor.execute_raw_with(context);
+
+    let bytes = Vec::from(hex!("0000000000000000000000000000000000000000000000000000000000000004"));
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(bytes), output.data);
+    assert_eq!(gas_used, consumed_gas(output.gas_left));
+}
+
+#[test]
+fn test_extcodesize(){
+    for revision in Revision::iter() {
+        if revision < Revision::Tangerine {
+            test_extcodesize_logic(61, revision);
+            continue;
+        }else if revision < Revision::Berlin {
+            test_extcodesize_logic(1421, revision);
+            continue;
+        }else{
+            test_extcodesize_logic(2721, revision);
+            continue;
+        }
+    }
+}
