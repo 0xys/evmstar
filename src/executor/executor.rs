@@ -115,28 +115,28 @@ impl Executor {
                 let context = self.host.get_tx_context();
                 Resume::Context(*kind, context)
             },
-            Interrupt::GetCodeSize(address) => {
+            Interrupt::GetExtCodeSize(address) => {
                 let access_status = if self.revision >= Revision::Berlin {
                     self.host.access_account(*address)
                 }else{
                     AccessStatus::Warm
                 };
                 let size = self.host.get_code_size(*address);
-                Resume::GetCodeSize(size, access_status)
+                Resume::GetExtCodeSize(size, access_status)
             },
-            Interrupt::GetCode(address, dest_offset, offset, size) => {
+            Interrupt::GetExtCode(address, dest_offset, offset, size) => {
                 let access_status = if self.revision >= Revision::Berlin {
                     self.host.access_account(*address)
                 }else{
                     AccessStatus::Warm
                 };
                 let code = self.host.get_code(*address, *offset, *size);
-                Resume::GetCode(code, access_status, *dest_offset)
+                Resume::GetExtCode(code, access_status, *dest_offset)
             },
-            Interrupt::ExtCodeHash(address) => {
+            Interrupt::GetExtCodeHash(address) => {
                 let access_status = self.host.access_account(*address);
                 let hash = self.host.get_code_hash(*address);
-                Resume::ExtCodeHash(hash, access_status)
+                Resume::GetExtCodeHash(hash, access_status)
             },
             Interrupt::Blockhash(height) => {
                 let hash = self.host.get_blockhash(*height);

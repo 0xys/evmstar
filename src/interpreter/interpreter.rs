@@ -135,7 +135,7 @@ impl Interpreter {
             Resume::Context(kind, context) => {
                 self.handle_resume_context(kind, &context, stack)?
             },
-            Resume::ExtCodeHash(hash, access_status) => {
+            Resume::GetExtCodeHash(hash, access_status) => {
                 let gas =
                     if exec_context.revision >= Revision::Berlin {
                         match access_status {
@@ -181,7 +181,7 @@ impl Interpreter {
                 let gas = calc_sstore_gas_cost(new_value, exec_context.revision, access_status, storage_status);
                 Self::consume_constant_gas(gas_left, gas)?;
             },
-            Resume::GetCodeSize(size, access_status) => {
+            Resume::GetExtCodeSize(size, access_status) => {
                 stack.push_unchecked(size);
                 let cost =
                     if exec_context.revision >= Revision::Berlin {
@@ -198,7 +198,7 @@ impl Interpreter {
                     };
                 Self::consume_constant_gas(gas_left, cost)?;
             },
-            Resume::GetCode(code, access_status, dest_offset) => {
+            Resume::GetExtCode(code, access_status, dest_offset) => {
                 let memory_cost = mstore_data(U256::from(dest_offset), memory, &code, *gas_left)?;
                 let account_access_cost = 
                     if exec_context.revision >= Revision::Berlin {
@@ -596,7 +596,7 @@ impl Interpreter {
             OpCode::EXTCODESIZE => {
                 let address = stack.pop()?;
                 let address = u256_to_address(address);
-                Ok(Some(Interrupt::GetCodeSize(address)))
+                Ok(Some(Interrupt::GetExtCodeSize(address)))
             },
             OpCode::EXTCODECOPY => {
                 let address = stack.pop()?;
@@ -604,12 +604,12 @@ impl Interpreter {
                 let dest_offset = stack.pop()?;
                 let offset = stack.pop()?;
                 let size = stack.pop()?;
-                Ok(Some(Interrupt::GetCode(address, dest_offset.as_usize(), offset.as_usize(), size.as_usize())))
+                Ok(Some(Interrupt::GetExtCode(address, dest_offset.as_usize(), offset.as_usize(), size.as_usize())))
             },
             OpCode::EXTCODEHASH => {
                 let address = stack.pop()?;
                 let address = u256_to_address(address);
-                Ok(Some(Interrupt::ExtCodeHash(address)))
+                Ok(Some(Interrupt::GetExtCodeHash(address)))
             },
             OpCode::BLOCKHASH => {
                 Self::consume_constant_gas(gas_left, 20)?;

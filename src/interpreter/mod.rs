@@ -24,9 +24,9 @@ pub enum Interrupt {
     Balance(Address),
     GetStorage(Address, StorageKey),
     SetStorage(Address, StorageKey, StorageValue),
-    GetCodeSize(Address),
-    GetCodeHash(Address),
-    GetCode(Address, usize, usize, usize),
+    GetExtCodeSize(Address),
+    GetExtCode(Address, usize, usize, usize),
+    GetExtCodeHash(Address),
     CopyCode(Address, usize),
     SelfDestruct(Address, Address),
     Call,
@@ -37,7 +37,6 @@ pub enum Interrupt {
     Jump,
 
     Blockhash(usize),
-    ExtCodeHash(Address),
 
     Return(i64, Bytes),
     Stop(i64),
@@ -51,9 +50,9 @@ pub enum Resume {
     GetStorage(StorageValue, AccessStatus),
     SetStorage(StorageValue, AccessStatus, StorageStatus),
     Blockhash(U256),
-    ExtCodeHash(U256, AccessStatus),
-    GetCodeSize(U256, AccessStatus),
-    GetCode(Bytes, AccessStatus, usize),
+    GetExtCodeSize(U256, AccessStatus),
+    GetExtCode(Bytes, AccessStatus, usize),
+    GetExtCodeHash(U256, AccessStatus),
     Unknown,
 }
 
