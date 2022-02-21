@@ -323,6 +323,12 @@ impl Host for StatefulHost {
         U256::from(height)
     }
     fn get_code(&self, address: Address, offset: usize, size: usize) -> Bytes {
-        panic!("get_code not implemented.");
+        let mut record = self.recorded.lock().unwrap();
+        record.record_account_access(address);
+
+        self.accounts
+            .get(&address)
+            .map(|account| account.code.clone())
+            .unwrap_or_else(Bytes::default)
     }
 }

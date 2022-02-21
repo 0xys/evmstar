@@ -424,7 +424,7 @@ fn test_codecopy_out_of_bounds() {
 fn default_contract() -> Account {
     let mut account = Account::default();
     account.code = Bytes::from(Vec::from(hex!("aabbccdd")));
-    account.code_hash = U256::from(0xaabbccddu32);
+    account.code_hash = U256::from(0x0011eeffu32);
     account
 }
 
@@ -480,5 +480,116 @@ fn test_extcodesize(){
             test_extcodesize_logic(2721, revision);
             continue;
         }
+    }
+}
+
+fn test_extcodecopy_logic(gas_used: i64, revision: Revision) {
+    let mut host = StatefulHost::new_with(get_default_context());
+    host.add_account(default_contract_address(), default_contract());
+
+    let mut builder = Code::builder();
+
+    let code = builder
+        // first access
+        .append_opcode(OpCode::PUSH4)
+        .append("11223344") // contract address
+        .append_opcode(OpCode::EXTCODESIZE)
+
+        // second access
+        .append("600460006000")
+        .append_opcode(OpCode::PUSH4)
+        .append("11223344") // contract address
+        .append_opcode(OpCode::EXTCODECOPY)
+
+        .append("60206000")
+        .append_opcode(OpCode::RETURN);
+
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+
+    let mut executor = Executor::new_with(Box::new(host), true, revision);
+    let output = executor.execute_raw_with(context);
+
+    let bytes = Vec::from(hex!("aabbccdd00000000000000000000000000000000000000000000000000000000"));
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(bytes), output.data);
+    assert_eq!(gas_used, consumed_gas(output.gas_left));
+}
+
+#[test]
+fn test_extcodecopy() {
+    for revision in Revision::iter() {
+        if revision < Revision::Tangerine {
+            test_extcodecopy_logic(21 + 20 + 20 + 6, revision); // push*7 + EXTCODESIZE + EXTCODECOPY + memory op
+            continue;
+        }else if revision < Revision::Berlin {
+            test_extcodecopy_logic(21 + 700 + 700 + 6, revision);
+            continue;
+        }else{
+            test_extcodecopy_logic(21 + 2600 + 100 + 6, revision);
+            continue;
+        }
+    }
+}
+
+
+fn test_extcodehash_logic(gas_used: i64, revision: Revision) {
+    let mut host = StatefulHost::new_with(get_default_context());
+    host.add_account(default_contract_address(), default_contract());
+
+    let mut builder = Code::builder();
+
+    let code = builder
+        // first access
+        .append_opcode(OpCode::PUSH4)
+        .append("11223344") // contract address
+        .append_opcode(OpCode::EXTCODESIZE)
+
+        // second access
+        .append_opcode(OpCode::PUSH4)
+        .append("11223344") // contract address
+        .append_opcode(OpCode::EXTCODEHASH)
+        .append("6000")
+        .append_opcode(OpCode::MSTORE)
+
+        .append("60206000")
+        .append_opcode(OpCode::RETURN);
+
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+
+    let mut executor = Executor::new_with(Box::new(host), true, revision);
+    let output = executor.execute_raw_with(context);
+
+    let bytes = Vec::from(hex!("000000000000000000000000000000000000000000000000000000000011eeff"));
+    if revision < Revision::Constantinople {
+        assert_eq!(StatusCode::Failure(FailureKind::InvalidInstruction), output.status_code); // extcodehash is added on Constantinople by EIP-1013
+    }else{
+        assert_eq!(StatusCode::Success, output.status_code);
+        assert_eq!(Bytes::from(bytes), output.data);
+        assert_eq!(gas_used, consumed_gas(output.gas_left));
+    }    
+}
+
+#[test]
+fn test_extcodehash() {
+    for revision in Revision::iter() {
+        if revision < Revision::Constantinople {
+            test_extcodehash_logic(0, revision);
+            continue;
+        }
+        if revision >= Revision::Berlin {
+            test_extcodehash_logic(15 + 2600 + 100 + 6, revision);
+            continue;
+        }
+        let extcodehash_cost = match revision {
+            Revision::Istanbul => 700,
+            Revision::Constantinople | Revision::Petersburg => 400,
+            _ => panic!("undefined")
+        };
+
+        test_extcodehash_logic(15 + 700 + extcodehash_cost + 6, revision); // push*5 + EXTCODESIZE + EXTCODEHASH + memory op
     }
 }
