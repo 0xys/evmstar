@@ -1,5 +1,6 @@
 use ethereum_types::{Address, U256};
 use bytes::Bytes;
+use std::collections::HashMap;
 
 /// https://evmc.ethereum.org/structevmc__message.html
 #[derive(Clone, Debug, PartialEq)]
@@ -14,6 +15,8 @@ pub struct Message {
     pub create2_salt: U256,
     pub code_address: Address,
 }
+
+pub struct AccessList(pub HashMap<Address,Vec<U256>>);
 
 /// https://evmc.ethereum.org/structevmc__result.html
 #[derive(Clone, Debug, PartialEq)]

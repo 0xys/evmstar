@@ -4,6 +4,7 @@ use crate::host::Host;
 use crate::executor::callstack::{
     CallStack, CallContext, ExecutionContext
 };
+use crate::interpreter::stack::Calldata;
 use crate::interpreter::{
     Interrupt,
     interpreter::Interpreter,
@@ -21,6 +22,10 @@ pub struct Executor {
     interpreter: Interpreter,
     callstack: CallStack,
     revision: Revision,
+
+    /// if true, gas cost outside of EVM opcode, such as intrinsic cost, calldata cost and access list cost,
+    /// will be charged.
+    is_execution_cost_on: bool
 }
 
 const MAX_CODE_SIZE: usize = 0x6000;
@@ -31,7 +36,8 @@ impl Executor {
             host: host,
             interpreter: Interpreter::default(),
             callstack: CallStack::default(),
-            revision: Revision::Shanghai
+            revision: Revision::Shanghai,
+            is_execution_cost_on: false,
         }
     }
     pub fn new_with_tracing(host: Box<dyn Host>) -> Self {
@@ -39,7 +45,8 @@ impl Executor {
             host: host,
             interpreter: Interpreter::new_with_tracing(),
             callstack: CallStack::default(),
-            revision: Revision::Shanghai
+            revision: Revision::Shanghai,
+            is_execution_cost_on: false,
         }
     }
     pub fn new_with(host: Box<dyn Host>, is_trace: bool, revision: Revision) -> Self {
@@ -50,7 +57,22 @@ impl Executor {
                 false => Interpreter::default()
             },
             callstack: CallStack::default(),
-            revision: revision
+            revision: revision,
+            is_execution_cost_on: false,
+        }
+    }
+
+    /// gas cost that is not related to EVM opcode, such as intrinsic cost, calldata cost and access list cost, will be charged.
+    pub fn new_with_execution_cost(host: Box<dyn Host>, is_trace: bool, revision: Revision) -> Self {
+        Self {
+            host: host,
+            interpreter: match is_trace {
+                true => Interpreter::new_with_tracing(),
+                false => Interpreter::default()
+            },
+            callstack: CallStack::default(),
+            revision: revision,
+            is_execution_cost_on: true,
         }
     }
 
@@ -58,9 +80,32 @@ impl Executor {
         self.host.call(msg)
     }
 
+    /// execute with eip-2930 access list provided.
+    /// 
+    /// https://eips.ethereum.org/EIPS/eip-2930
+    pub fn execute_with_access_list(&mut self, mut context: CallContext, access_list: AccessList) -> Output {
+        for access in access_list.0.into_iter() {
+            self.host.access_account(access.0);
+            if self.is_execution_cost_on {
+                if !consume_gas(&mut context.gas_left, 2400){
+                    return Output::new_failure(FailureKind::OutOfGas, 0);
+                }
+            }
+
+            for key in access.1 {
+                self.host.access_storage(access.0, key);
+                if self.is_execution_cost_on {
+                    if !consume_gas(&mut context.gas_left, 1900){
+                        return Output::new_failure(FailureKind::OutOfGas, 0);
+                    }
+                }
+            }
+        }
+        self.execute_raw_with(context)
+    }
+
     pub fn execute_raw_with(&mut self, mut context: CallContext) -> Output {
         let mut resume = Resume::Init;
-        let mut gas_left = i64::max_value();
 
         let mut exec_context = ExecutionContext {
             refund_counter: 0,
@@ -74,13 +119,26 @@ impl Executor {
             }
         }
 
+        if self.is_execution_cost_on {
+            // intrinsic gas cost deduction
+            if !consume_gas(&mut context.gas_left, 21000){
+                return Output::new_failure(FailureKind::OutOfGas, 0);
+            }
+
+            let calldata_cost = cost_of_calldata(&context.calldata, self.revision);
+            // calldata cost deduction
+            if !consume_gas(&mut context.gas_left, calldata_cost){
+                return Output::new_failure(FailureKind::OutOfGas, 0);
+            }
+        }
+
         loop {
-            let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut exec_context, &mut gas_left);
+            let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut exec_context);
             
             let interrupt = match interrupt {
                 Ok(i) => i,
                 Err(failure_kind) => match failure_kind {
-                    FailureKind::Revert => return Output::new_failure(failure_kind, gas_left),
+                    FailureKind::Revert => return Output::new_failure(failure_kind, context.gas_left),
                     _ => return Output::new_failure(failure_kind, 0),
                 }
             };
@@ -167,4 +225,30 @@ impl Executor {
             }
         }
     }
+}
+
+fn consume_gas(gas_left: &mut i64, gas: i64) -> bool {
+    *gas_left -= gas;
+    if *gas_left < 0 {
+        return false;
+    }
+    true
+}
+
+fn cost_of_calldata(calldata: &Calldata, revision: Revision) -> i64 {
+    let mut cost = 0i64;
+    for hex in &calldata.0 {
+        cost += 
+            if *hex == 0 {
+                4
+            }else{
+                // https://eips.ethereum.org/EIPS/eip-2028
+                if revision >= Revision::Istanbul {
+                    16
+                }else{
+                    68
+                }
+            }
+    }
+    cost
 }

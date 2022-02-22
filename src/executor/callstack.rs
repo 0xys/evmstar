@@ -15,7 +15,7 @@ pub struct ExecutionContext {
     pub revision: Revision,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct CallContext {
     pub pc: usize,
     pub stack: Stack,
@@ -27,7 +27,26 @@ pub struct CallContext {
     pub origin: Address,
     pub value: U256,
     pub is_staticcall: bool,
+    pub gas_left: i64,
 }
+impl Default for CallContext {
+    fn default() -> Self {
+        CallContext {
+            pc: 0,
+            stack: Stack::default(),
+            memory: Memory::default(),
+            calldata: Calldata::default(),
+            code: Code::default(),
+            caller: Address::default(),
+            to: Address::default(),
+            origin: Address::default(),
+            value: U256::default(),
+            is_staticcall: false,
+            gas_left: i64::max_value() // max as default
+        }
+    }
+}
+
 
 const SIZE: usize = 1024;
 
