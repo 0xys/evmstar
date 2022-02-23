@@ -125,9 +125,13 @@ impl Executor {
         }
 
         if self.revision >= Revision::Berlin {
-            // access self
+            // https://eips.ethereum.org/EIPS/eip-2929#specification
+            // accessed_addresses is initialized to include
+            // the tx.sender, tx.to (or the address being created if it is a contract creation transaction)
+            // and the set of all precompiles.
             self.host.access_account(context.to);
-        }        
+            self.host.access_account(context.caller);
+        }
 
         if self.is_execution_cost_on {
             // intrinsic gas cost deduction

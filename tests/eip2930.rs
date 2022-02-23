@@ -183,3 +183,47 @@ fn test_eip2930() {
         ;
     assert_eq!(expected, consumed_gas(output.gas_left));
 }
+
+#[test]
+fn test_eip2930_sstore() {
+    let mut host = StatefulHost::new_with(get_default_context());
+    host.debug_set_storage(address_default(), U256::from(0), U256::from(1));    // add original value
+    
+    let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
+    
+    let mut access_list = AccessList::default();
+    access_list.add_storage(address_default(), U256::from(0));  // make it warm
+
+    let mut builder = Code::builder();
+    let code = builder
+        .append_opcode(OpCode::PUSH1)
+        .append(2)  // new value
+        .append_opcode(OpCode::PUSH1)
+        .append(0)  // warm key
+        .append_opcode(OpCode::SSTORE)  // warm
+
+        .append_opcode(OpCode::PUSH1)
+        .append(1)  // new value
+        .append_opcode(OpCode::PUSH1)
+        .append(1)  // cold key
+        .append_opcode(OpCode::SSTORE)  // cold
+        ;
+    
+    let mut context = CallContext::default();
+    context.to = address_default();
+    context.code = code.clone();
+
+    let output = executor.execute_with_access_list(context, access_list);
+
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::default(), output.data);
+
+    let expected = 21000
+        + 1900      // storage access * 1
+        + 2400      // account(to) access * 1
+        + 3 * 4     // push * 2
+        + 2900      // warm sstore
+        + 22100     // cold sstore
+        ;
+    assert_eq!(expected, consumed_gas(output.gas_left));
+}
