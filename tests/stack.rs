@@ -26,16 +26,16 @@ pub fn test_push() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(0xff)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(0x00)
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append(0x01)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(31)
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -51,7 +51,7 @@ pub fn test_pop_empty() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::POP);
+        .append(OpCode::POP);
     
     let output = executor.execute_raw(&code);
 
@@ -85,16 +85,16 @@ pub fn test_push2() {
         let mut builder = Code::builder();
     
         let code = builder
-            .append_opcode(OpCode::PUSH2)
+            .append(OpCode::PUSH2)
             .append("1122")
-            .append_opcode(OpCode::PUSH1)
+            .append(OpCode::PUSH1)
             .append("00")
-            .append_opcode(OpCode::MSTORE)
-            .append_opcode(OpCode::PUSH1)
+            .append(OpCode::MSTORE)
+            .append(OpCode::PUSH1)
             .append("02")
-            .append_opcode(OpCode::PUSH1)
+            .append(OpCode::PUSH1)
             .append(30)
-            .append_opcode(OpCode::RETURN);
+            .append(OpCode::RETURN);
         
         let output = executor.execute_raw(&code);
     
@@ -108,16 +108,16 @@ pub fn test_push2() {
         let mut builder = Code::builder();
     
         let code = builder
-            .append_opcode(OpCode::PUSH2)
+            .append(OpCode::PUSH2)
             .append("1122")
-            .append_opcode(OpCode::PUSH1)
+            .append(OpCode::PUSH1)
             .append("00")
-            .append_opcode(OpCode::MSTORE)
-            .append_opcode(OpCode::PUSH1)
+            .append(OpCode::MSTORE)
+            .append(OpCode::PUSH1)
             .append("02")
-            .append_opcode(OpCode::PUSH1)
+            .append(OpCode::PUSH1)
             .append(31)      // cause memory expansion
-            .append_opcode(OpCode::RETURN);
+            .append(OpCode::RETURN);
         
         let output = executor.execute_raw(&code);
     
@@ -136,16 +136,16 @@ pub fn test_push32() {
     let data = decode("ff00000000000000000000000000000000000000000000000000000011223344").unwrap();
 
     let code = builder
-        .append_opcode(OpCode::PUSH32)
+        .append(OpCode::PUSH32)
         .append(data.as_slice())
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(0)
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -164,16 +164,16 @@ pub fn test_push32_with_expansion() {
     let data_right =    decode("ff00000000000000000000001122334400000000000000000000000000000000").unwrap();
 
     let code = builder
-        .append_opcode(OpCode::PUSH32)
+        .append(OpCode::PUSH32)
         .append(data.as_slice())
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("10")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -189,15 +189,15 @@ pub fn test_dup1() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("01")
-        .append_opcode(OpCode::DUP1)
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::DUP1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("40")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -215,17 +215,17 @@ pub fn test_dup2() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("01")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("01")
-        .append_opcode(OpCode::DUP2)
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::DUP2)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("40")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -243,19 +243,19 @@ pub fn test_dup3() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("01")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("ff")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("01")
-        .append_opcode(OpCode::DUP3)
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::DUP3)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("40")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -273,15 +273,15 @@ pub fn test_dup_overflow() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("01")
-        .append_opcode(OpCode::DUP16)   // overflow
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::DUP16)   // overflow
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("40")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     assert_eq!(StatusCode::Failure(FailureKind::StackOverflow), output.status_code);
@@ -294,24 +294,24 @@ pub fn test_swap2swap3() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("02")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("03")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("04")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("05")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("06")
-        .append_opcode(OpCode::SWAP2)
-        .append_opcode(OpCode::SWAP3)
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::SWAP2)
+        .append(OpCode::SWAP3)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("40")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let memory = decode("00000000000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000").unwrap();

@@ -62,17 +62,17 @@ fn test_extcodehash_cold() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH3)
+        .append(OpCode::PUSH3)
         .append("123456")
-        .append_opcode(OpCode::EXTCODEHASH)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::EXTCODEHASH)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("00000000000000000000000000000000000000000000000000000000000000aa").unwrap();
@@ -99,20 +99,20 @@ fn test_extcodehash_warm() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH3)
+        .append(OpCode::PUSH3)
         .append("123456")
-        .append_opcode(OpCode::EXTCODEHASH)
-        .append_opcode(OpCode::PUSH3)
+        .append(OpCode::EXTCODEHASH)
+        .append(OpCode::PUSH3)
         .append("123456")
-        .append_opcode(OpCode::EXTCODEHASH)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::EXTCODEHASH)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("00000000000000000000000000000000000000000000000000000000000000aa").unwrap();
@@ -257,14 +257,14 @@ fn test_calldataload_2() {
 
     // 7feeee00000000000000000000000000000000000000000000000000000000000060005260003560105260206000f3
     let code = builder
-        .append_opcode(OpCode::PUSH32)
+        .append(OpCode::PUSH32)
         .append("eeee000000000000000000000000000000000000000000000000000000000000")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(0)
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append(0)
-        .append_opcode(OpCode::CALLDATALOAD)
+        .append(OpCode::CALLDATALOAD)
         .append("60105260206000f3");
 
     let mut context = CallContext::default();
@@ -290,9 +290,9 @@ fn test_calldatacopy() {
     // 6020600060003760206000f3
     let code = builder
         .append("602060006000")
-        .append_opcode(OpCode::CALLDATACOPY)
+        .append(OpCode::CALLDATACOPY)
         .append("60206000")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
 
     let mut context = CallContext::default();
     context.code = code.clone();
@@ -316,15 +316,15 @@ fn test_calldatacopy_2() {
 
     // 7feeee0000000000000000000000000000000000000000000000000000000000006000526020600060103760206000f3
     let code = builder
-        .append_opcode(OpCode::PUSH32)
+        .append(OpCode::PUSH32)
         .append("eeee000000000000000000000000000000000000000000000000000000000000")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(0)
-        .append_opcode(OpCode::MSTORE)
+        .append(OpCode::MSTORE)
         .append("602060006010")
-        .append_opcode(OpCode::CALLDATACOPY)
+        .append(OpCode::CALLDATACOPY)
         .append("60206000")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
 
     let mut context = CallContext::default();
     context.code = code.clone();
@@ -348,11 +348,11 @@ fn test_codesize() {
 
     // 3860005260206000f3
     let code = builder
-        .append_opcode(OpCode::CODESIZE)
+        .append(OpCode::CODESIZE)
         .append("6000")
-        .append_opcode(OpCode::MSTORE)
+        .append(OpCode::MSTORE)
         .append("60206000")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
 
     let mut context = CallContext::default();
     context.code = code.clone();
@@ -376,9 +376,9 @@ fn test_codecopy() {
     // 600c600060003960206000f3
     let code = builder
         .append("600c60006000")
-        .append_opcode(OpCode::CODECOPY)
+        .append(OpCode::CODECOPY)
         .append("60206000")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
 
     let mut context = CallContext::default();
     context.code = code.clone();
@@ -401,12 +401,12 @@ fn test_codecopy_out_of_bounds() {
 
     // 6040600060003960406000f3
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(64) // out of bounds
         .append("60006000")
-        .append_opcode(OpCode::CODECOPY)
+        .append(OpCode::CODECOPY)
         .append("60406000")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
 
     let mut context = CallContext::default();
     context.code = code.clone();
@@ -440,19 +440,19 @@ fn test_extcodesize_logic(gas_used: i64, revision: Revision){
 
     let code = builder
         // first access
-        .append_opcode(OpCode::PUSH4)
+        .append(OpCode::PUSH4)
         .append("11223344") // contract address
-        .append_opcode(OpCode::EXTCODESIZE)
+        .append(OpCode::EXTCODESIZE)
 
         // second access
-        .append_opcode(OpCode::PUSH4)
+        .append(OpCode::PUSH4)
         .append("11223344") // contract address
-        .append_opcode(OpCode::EXTCODESIZE)
+        .append(OpCode::EXTCODESIZE)
         .append("6000")
-        .append_opcode(OpCode::MSTORE)
+        .append(OpCode::MSTORE)
 
         .append("60206000")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
 
     let mut context = CallContext::default();
     context.code = code.clone();
@@ -491,18 +491,18 @@ fn test_extcodecopy_logic(gas_used: i64, revision: Revision) {
 
     let code = builder
         // first access
-        .append_opcode(OpCode::PUSH4)
+        .append(OpCode::PUSH4)
         .append("11223344") // contract address
-        .append_opcode(OpCode::EXTCODESIZE)
+        .append(OpCode::EXTCODESIZE)
 
         // second access
         .append("600460006000")
-        .append_opcode(OpCode::PUSH4)
+        .append(OpCode::PUSH4)
         .append("11223344") // contract address
-        .append_opcode(OpCode::EXTCODECOPY)
+        .append(OpCode::EXTCODECOPY)
 
         .append("60206000")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
 
     let mut context = CallContext::default();
     context.code = code.clone();
@@ -542,19 +542,19 @@ fn test_extcodehash_logic(gas_used: i64, revision: Revision) {
 
     let code = builder
         // first access
-        .append_opcode(OpCode::PUSH4)
+        .append(OpCode::PUSH4)
         .append("11223344") // contract address
-        .append_opcode(OpCode::EXTCODESIZE)
+        .append(OpCode::EXTCODESIZE)
 
         // second access
-        .append_opcode(OpCode::PUSH4)
+        .append(OpCode::PUSH4)
         .append("11223344") // contract address
-        .append_opcode(OpCode::EXTCODEHASH)
+        .append(OpCode::EXTCODEHASH)
         .append("6000")
-        .append_opcode(OpCode::MSTORE)
+        .append(OpCode::MSTORE)
 
         .append("60206000")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
 
     let mut context = CallContext::default();
     context.code = code.clone();

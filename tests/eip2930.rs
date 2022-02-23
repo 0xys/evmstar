@@ -141,25 +141,25 @@ fn test_eip2930() {
 
     let mut builder = Code::builder();
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(0)
-        .append_opcode(OpCode::SLOAD)  // warm
+        .append(OpCode::SLOAD)  // warm
 
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(1)
-        .append_opcode(OpCode::SLOAD)   // cold
+        .append(OpCode::SLOAD)   // cold
         
-        .append_opcode(OpCode::PUSH4)
+        .append(OpCode::PUSH4)
         .append("aaaaaaaa")
-        .append_opcode(OpCode::EXTCODESIZE) // warm
+        .append(OpCode::EXTCODESIZE) // warm
 
-        .append_opcode(OpCode::PUSH4)
+        .append(OpCode::PUSH4)
         .append("ffffffff")
-        .append_opcode(OpCode::EXTCODESIZE) // warm
+        .append(OpCode::EXTCODESIZE) // warm
 
-        .append_opcode(OpCode::PUSH4)
+        .append(OpCode::PUSH4)
         .append("eeeeeeee")
-        .append_opcode(OpCode::EXTCODESIZE) // cold
+        .append(OpCode::EXTCODESIZE) // cold
         ;
 
     let mut context = CallContext::default();
@@ -196,17 +196,17 @@ fn test_eip2930_sstore() {
 
     let mut builder = Code::builder();
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(2)  // new value
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(0)  // warm key
-        .append_opcode(OpCode::SSTORE)  // warm
+        .append(OpCode::SSTORE)  // warm
 
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(1)  // new value
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append(1)  // cold key
-        .append_opcode(OpCode::SSTORE)  // cold
+        .append(OpCode::SSTORE)  // cold
         ;
     
     let mut context = CallContext::default();

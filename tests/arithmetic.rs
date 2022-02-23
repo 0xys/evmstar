@@ -26,19 +26,19 @@ pub fn test_add() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("02")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("03")
-        .append_opcode(OpCode::ADD)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::ADD)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -58,19 +58,19 @@ pub fn test_add_overflow() {
     let u256_max = decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
 
     let code = builder
-        .append_opcode(OpCode::PUSH32)
+        .append(OpCode::PUSH32)
         .append(u256_max.as_slice())
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("01")
-        .append_opcode(OpCode::ADD)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::ADD)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -88,19 +88,19 @@ pub fn test_sub() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("02")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("04")
-        .append_opcode(OpCode::SUB)     // 4 - 2
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::SUB)     // 4 - 2
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -118,19 +118,19 @@ pub fn test_sub_underflow() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("01")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::SUB)     // 0 - 1 = underflow
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::SUB)     // 0 - 1 = underflow
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -148,19 +148,19 @@ pub fn test_mul() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("04")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("02")
-        .append_opcode(OpCode::MUL)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MUL)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -180,19 +180,19 @@ pub fn test_mul_overflow() {
     let u256_max = decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
 
     let code = builder
-        .append_opcode(OpCode::PUSH32)
+        .append(OpCode::PUSH32)
         .append(u256_max.as_slice())
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("02")
-        .append_opcode(OpCode::MUL)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MUL)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -213,19 +213,19 @@ pub fn test_div() {
     let u256_max = decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("03")
-        .append_opcode(OpCode::PUSH32)
+        .append(OpCode::PUSH32)
         .append(u256_max.as_slice())
-        .append_opcode(OpCode::DIV)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::DIV)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -244,19 +244,19 @@ pub fn test_sdiv() {
 
     let bn = decode("0000000000000000000000ffffffffffffffffffffffffffffffffffffffffff").unwrap();
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("03")
-        .append_opcode(OpCode::PUSH32)
+        .append(OpCode::PUSH32)
         .append(bn.as_slice())
-        .append_opcode(OpCode::DIV)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::DIV)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 

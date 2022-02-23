@@ -15,16 +15,6 @@ impl Code {
         }
     }
 
-    pub fn append_opcode<'a>(&'a mut self, opcode: OpCode) -> &'a mut Self {
-        self.0.push(opcode.to_u8());
-        self
-    }
-
-    // pub fn append<'a>(&'a mut self, data: &[u8]) -> &'a mut Self {
-    //     self.0.append(&mut Vec::from(data));
-    //     self
-    // }
-
     pub fn append_code<'a>(&'a mut self, code: &mut Code) -> &'a mut Self {
         self.0.append(&mut code.0);
         self
@@ -81,6 +71,12 @@ impl Append<&[u8]> for Code {
 impl Append<u8> for Code {
     fn append<'a>(&'a mut self, data: u8) -> &'a mut Self {
         self.0.append(&mut Vec::from([data]));
+        self
+    }
+}
+impl Append<OpCode> for Code {
+    fn append<'a>(&'a mut self, opcode: OpCode) -> &'a mut Self {
+        self.0.push(opcode.to_u8());
         self
     }
 }

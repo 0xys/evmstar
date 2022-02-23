@@ -42,15 +42,15 @@ fn test_gas_price() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::GASPRICE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::GASPRICE)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000001234").unwrap();
@@ -67,15 +67,15 @@ fn test_coinbase() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::COINBASE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::COINBASE)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("000000000000000000000000000000000000000000000000000000000000abcd").unwrap();
@@ -92,15 +92,15 @@ fn test_block_number() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::NUMBER)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::NUMBER)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000001111").unwrap();
@@ -117,15 +117,15 @@ fn test_block_timestamp() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::TIMESTAMP)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::TIMESTAMP)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000002222").unwrap();
@@ -142,15 +142,15 @@ fn test_gas_limit() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::GASLIMIT)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::GASLIMIT)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000003333").unwrap();
@@ -167,15 +167,15 @@ fn test_base_fee() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::BASEFEE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::BASEFEE)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000004444").unwrap();
@@ -192,15 +192,15 @@ fn test_chain_id() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::CHAINID)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::CHAINID)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000000001").unwrap();
@@ -217,15 +217,15 @@ fn test_difficulty() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::DIFFICULTY)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::DIFFICULTY)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000005555").unwrap();
@@ -242,17 +242,17 @@ fn test_blockhash() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("01")
-        .append_opcode(OpCode::BLOCKHASH)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::BLOCKHASH)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
         .append("20")
-        .append_opcode(OpCode::PUSH1)
+        .append(OpCode::PUSH1)
         .append("00")
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000000101").unwrap();
