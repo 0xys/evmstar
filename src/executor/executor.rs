@@ -84,15 +84,20 @@ impl Executor {
     /// 
     /// https://eips.ethereum.org/EIPS/eip-2930
     pub fn execute_with_access_list(&mut self, mut context: CallContext, access_list: AccessList) -> Output {
-        for access in access_list.0.into_iter() {
+        if self.revision < Revision::Berlin {
+            panic!("eip2930 is enabled after Berlin onward.");
+        }
+        
+        for access in access_list.map.into_iter() {
             self.host.access_account(access.0);
             if self.is_execution_cost_on {
-                if !consume_gas(&mut context.gas_left, 2400){
+                let account_cost = 2400 * access.1.0;
+                if !consume_gas(&mut context.gas_left, account_cost as i64){
                     return Output::new_failure(FailureKind::OutOfGas, 0);
                 }
             }
 
-            for key in access.1 {
+            for key in access.1.1 {
                 self.host.access_storage(access.0, key);
                 if self.is_execution_cost_on {
                     if !consume_gas(&mut context.gas_left, 1900){
