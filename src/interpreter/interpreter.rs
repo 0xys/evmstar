@@ -602,6 +602,10 @@ impl Interpreter {
                 Self::consume_constant_gas(&mut context.gas_left, 3 + dynamic_cost)?;    // static cost of `3` is added here.
                 Ok(None)
             },
+            OpCode::GASPRICE => {
+                Self::consume_constant_gas(&mut context.gas_left, 2)?;
+                Ok(Some(Interrupt::Context(ContextKind::GasPrice)))
+            },
             OpCode::EXTCODESIZE => {
                 let address = stack.pop()?;
                 let address = u256_to_address(address);
@@ -615,6 +619,12 @@ impl Interpreter {
                 let size = stack.pop()?;
                 Ok(Some(Interrupt::GetExtCode(address, dest_offset.as_usize(), offset.as_usize(), size.as_usize())))
             },
+            // OpCode::RETURNDATASIZE => {
+            //     Ok(None)
+            // },
+            // OpCode::RETURNDATACOPY => {
+            //     Ok(None)
+            // },
             OpCode::EXTCODEHASH => {
                 let address = stack.pop()?;
                 let address = u256_to_address(address);
@@ -641,10 +651,6 @@ impl Interpreter {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
                 Ok(Some(Interrupt::Context(ContextKind::Difficulty)))
             },
-            OpCode::GASPRICE => {
-                Self::consume_constant_gas(&mut context.gas_left, 2)?;
-                Ok(Some(Interrupt::Context(ContextKind::GasPrice)))
-            },
             OpCode::GASLIMIT => {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
                 Ok(Some(Interrupt::Context(ContextKind::GasLimit)))
@@ -661,7 +667,6 @@ impl Interpreter {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
                 Ok(Some(Interrupt::Context(ContextKind::BaseFee)))
             }
-
             OpCode::POP => {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
                 stack.pop()?;
@@ -803,13 +808,61 @@ impl Interpreter {
                 Ok(None)
             },
 
+            // OpCode::LOG0 => {
+            //     Ok(None)
+            // },
+            // OpCode::LOG1 => {
+            //     Ok(None)
+            // },
+            // OpCode::LOG2 => {
+            //     Ok(None)
+            // },
+            // OpCode::LOG3 => {
+            //     Ok(None)
+            // },
+            // OpCode::LOG4 => {
+            //     Ok(None)
+            // },
+
+            // OpCode::CREATE => {
+            //     Ok(None)
+            // },
+            // OpCode::CALL => {
+            //     Ok(None)
+            // },
+            // OpCode::CALLCODE => {
+            //     Ok(None)
+            // },
+
             OpCode::RETURN => {
                 let offset = stack.pop()?;
                 let size = stack.pop()?;
                 let (gas_consumed, data) = ret(offset, size, memory, context.gas_left)?;
                 context.gas_left -= gas_consumed;
                 Ok(Some(Interrupt::Return(context.gas_left, data)))
-            }
+            },
+
+            // OpCode::DELEGATECALL => {
+            //     Ok(None)
+            // },
+            // OpCode::CREATE2 => {
+            //     Ok(None)
+            // },
+            // OpCode::STATICCALL => {
+            //     Ok(None)
+            // },
+
+            // OpCode::REVERT => {
+            //     Ok(None)
+            // },
+
+            // OpCode::INVALID => {
+            //     Ok(None)
+            // },
+
+            // OpCode::SELFDESTRUCT => {
+            //     Ok(None)
+            // },
 
             _ => Ok(None)
         }
