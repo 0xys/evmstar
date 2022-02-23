@@ -87,7 +87,7 @@ impl Executor {
         if self.revision < Revision::Berlin {
             panic!("eip2930 is enabled after Berlin onward.");
         }
-        
+
         for access in access_list.map.into_iter() {
             self.host.access_account(access.0);
             if self.is_execution_cost_on {
@@ -123,6 +123,11 @@ impl Executor {
                 return Output::new_failure(FailureKind::OutOfGas, 0);
             }
         }
+
+        if self.revision >= Revision::Berlin {
+            // access self
+            self.host.access_account(context.to);
+        }        
 
         if self.is_execution_cost_on {
             // intrinsic gas cost deduction

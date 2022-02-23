@@ -42,27 +42,25 @@ fn get_default_context() -> TxContext {
 }
 
 fn sstore_eip2929(code: Vec<u8>, gas_used: i64, gas_refund: i64, warm: bool, original: usize) {
-    {
-        let mut host = StatefulHost::new_with(get_default_context());
-        host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
-        if warm {
-            host.debug_set_storage_as_warm();
-        }
-    
-        let mut builder = Code::builder();
-        let code = builder.append(code.as_slice());
-        let mut context = CallContext::default();
-        context.code = code.clone();
-        context.to = default_address();
-    
-        let mut executor = Executor::new_with(Box::new(host), true, Revision::Berlin);
-        let output = executor.execute_raw_with(context);
-    
-        assert_eq!(StatusCode::Success, output.status_code);
-        assert_eq!(Bytes::default(), output.data);
-        assert_eq!(gas_used, consumed_gas(output.gas_left));
-        assert_eq!(gas_refund, output.gas_refund);
+    let mut host = StatefulHost::new_with(get_default_context());
+    host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
+    if warm {
+        host.debug_set_storage_as_warm();
     }
+
+    let mut builder = Code::builder();
+    let code = builder.append(code.as_slice());
+    let mut context = CallContext::default();
+    context.code = code.clone();
+    context.to = default_address();
+
+    let mut executor = Executor::new_with(Box::new(host), true, Revision::Berlin);
+    let output = executor.execute_raw_with(context);
+
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::default(), output.data);
+    assert_eq!(gas_used, consumed_gas(output.gas_left));
+    assert_eq!(gas_refund, output.gas_refund);
 }
 
 /// defined in https://eips.ethereum.org/EIPS/eip-3529

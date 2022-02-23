@@ -537,6 +537,18 @@ impl Interpreter {
                 Ok(None)
             },
 
+            // OpCode::KECCAK256 => {
+            //     Ok(None)
+            // },
+            // OpCode::ADDRESS => {
+            //     Self::consume_constant_gas(&mut context.gas_left, 2)?;
+            //     let address= address_to_u256(context.to);
+            //     stack.push(address)?;
+            //     Ok(None)
+            // },
+            // Opcode::BALANCE => {
+            //     Ok(None)
+            // },
             OpCode::ORIGIN => {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
                 let origin = address_to_u256(context.origin);
