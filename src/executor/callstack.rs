@@ -27,6 +27,7 @@ pub struct CallContext {
     pub origin: Address,
     pub value: U256,
     pub is_staticcall: bool,
+    pub gas_limit: i64,
     pub gas_left: i64,
 }
 impl Default for CallContext {
@@ -42,6 +43,7 @@ impl Default for CallContext {
             origin: Address::default(),
             value: U256::default(),
             is_staticcall: false,
+            gas_limit: i64::max_value(),
             gas_left: i64::max_value() // max as default
         }
     }

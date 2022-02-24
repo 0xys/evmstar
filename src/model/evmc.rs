@@ -75,7 +75,9 @@ pub struct Output {
     pub data: Bytes,
     pub size: usize,
     pub create_address: Option<Address>,
-    pub gas_refund: i64,  // extension
+
+    pub gas_refund: i64,            // extension
+    pub effective_gas_refund: i64,  // extension
 }
 impl Default for Output {
     fn default() -> Self {
@@ -86,11 +88,12 @@ impl Default for Output {
             data: Bytes::default(),
             size: 0,
             gas_refund: 0,
+            effective_gas_refund: 0,
         }
     }
 }
 impl Output {
-    pub fn new_success(gas_left: i64, gas_refund: i64, data: Bytes) -> Self {
+    pub fn new_success(gas_left: i64, gas_refund: i64, effective_gas_refund: i64, data: Bytes) -> Self {
         let size = data.len();
         Output {
             gas_left: gas_left,
@@ -99,6 +102,7 @@ impl Output {
             data: data,
             size: size,
             gas_refund: gas_refund,
+            effective_gas_refund: effective_gas_refund,
         }
     }
 
@@ -110,6 +114,7 @@ impl Output {
             data: Bytes::default(),
             size: 0,
             gas_refund: 0,
+            effective_gas_refund: 0,
         }
     }
 }

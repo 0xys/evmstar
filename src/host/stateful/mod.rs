@@ -264,6 +264,7 @@ impl Host for StatefulHost {
             data: Bytes::default(),
             size: 0,
             gas_refund: 0,
+            effective_gas_refund: 0,
         }
     }
 

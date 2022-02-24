@@ -68,6 +68,7 @@ impl Host for TransientHost {
             data: Bytes::default(),
             size: 0,
             gas_refund: 0,
+            effective_gas_refund: 0,
         }
     }
     fn get_tx_context(&self) -> TxContext {

@@ -1,4 +1,5 @@
 use bytes::Bytes;
+use std::cmp::min;
 
 use crate::host::Host;
 use crate::executor::callstack::{
@@ -159,10 +160,12 @@ impl Executor {
 
             match interrupt {
                 Interrupt::Return(gas_left, data) => {
-                    return Output::new_success(gas_left, exec_context.refund_counter, data);
+                    let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, 0, self.revision);
+                    return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
                 },
                 Interrupt::Stop(gas_left) => {
-                    return Output::new_success(gas_left, exec_context.refund_counter, Bytes::default())
+                    let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, 0, self.revision);
+                    return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, Bytes::default());
                 }
                 _ => ()
             };
@@ -265,4 +268,30 @@ fn cost_of_calldata(calldata: &Calldata, revision: Revision) -> i64 {
             }
     }
     cost
+}
+
+fn calc_effective_refund(
+    gas_limit: i64,
+    gas_left: i64,
+    refund_counter: i64,
+    num_of_selfdestruct: i64,
+    revision: Revision
+) -> i64 {
+    let refund = refund_counter + 
+        if revision < Revision::London {
+            24000 * num_of_selfdestruct
+        }else{
+            0
+        };
+    
+    let max_refund_quotient =
+        if revision > Revision::London {
+            5
+        }else{
+            2
+        };
+    
+    let max_refund = (gas_limit - gas_left) / max_refund_quotient;
+    let refund = min(refund, max_refund);
+    refund
 }
