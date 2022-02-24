@@ -29,6 +29,7 @@ pub struct CallContext {
     pub is_staticcall: bool,
     pub gas_limit: i64,
     pub gas_left: i64,
+    pub num_of_selfdestruct: i64,
 }
 impl Default for CallContext {
     fn default() -> Self {
@@ -44,7 +45,8 @@ impl Default for CallContext {
             value: U256::default(),
             is_staticcall: false,
             gas_limit: i64::max_value(),
-            gas_left: i64::max_value() // max as default
+            gas_left: i64::max_value(),
+            num_of_selfdestruct: 0,
         }
     }
 }

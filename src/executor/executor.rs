@@ -160,11 +160,11 @@ impl Executor {
 
             match interrupt {
                 Interrupt::Return(gas_left, data) => {
-                    let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, 0, self.revision);
+                    let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, context.num_of_selfdestruct, self.revision);
                     return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
                 },
                 Interrupt::Stop(gas_left) => {
-                    let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, 0, self.revision);
+                    let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, context.num_of_selfdestruct, self.revision);
                     return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, Bytes::default());
                 }
                 _ => ()
