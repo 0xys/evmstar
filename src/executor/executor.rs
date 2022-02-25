@@ -246,6 +246,9 @@ impl Executor {
                 let storage_status = self.host.set_storage(*address, *key, *new_value);
                 Resume::SetStorage(*new_value, access_status, storage_status)
             },
+            Interrupt::Call(_params) => {
+                panic!("TODO call interrupt.");
+            },
             _ => {
                 Resume::Unknown
             }

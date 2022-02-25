@@ -30,7 +30,6 @@ pub enum Interrupt {
     GetExtCodeHash(Address),
     CopyCode(Address, usize),
     SelfDestruct(Address, Address),
-    Call,
     Emit(Address, LogData, LogTopics),
     AccessAccount(Address),
     AccessStorage(Address, StorageKey),
@@ -38,6 +37,8 @@ pub enum Interrupt {
     Jump,
 
     Blockhash(usize),
+
+    Call(CallParams),
 
     Return(i64, Bytes),
     Stop(i64),
@@ -55,6 +56,7 @@ pub enum Resume {
     GetExtCodeSize(U256, AccessStatus),
     GetExtCode(Bytes, AccessStatus, usize),
     GetExtCodeHash(U256, AccessStatus),
+    Call(bool),
     Unknown,
 }
 
@@ -68,4 +70,30 @@ pub enum ContextKind {
     GasLimit,
     ChainId,
     BaseFee,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
+pub struct CallParams {
+    pub kind: CallKind,
+    pub gas: i64,
+    pub address: Address,
+    pub value: U256,
+    pub args_offset: U256,
+    pub args_size: U256,
+    pub ret_offset: U256,
+    pub ret_size: U256,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum CallKind {
+    Plain,
+    CallCode,
+    DelegateCall,
+    StaticCall,
+}
+
+impl Default for CallKind {
+    fn default() -> Self {
+        CallKind::Plain
+    }
 }

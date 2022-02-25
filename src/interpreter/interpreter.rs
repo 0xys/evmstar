@@ -33,6 +33,8 @@ use crate::utils::{
     address_to_u256, u256_to_address,
 };
 
+use super::{CallParams, CallKind};
+
 #[derive(Clone, Debug)]
 pub struct Interpreter {
     pub pc: usize,
@@ -654,9 +656,17 @@ impl Interpreter {
                 Ok(Some(Interrupt::GetExtCode(address, dest_offset.as_usize(), offset.as_usize(), size.as_usize())))
             },
             // OpCode::RETURNDATASIZE => {
+            //     // EIP-211: https://eips.ethereum.org/EIPS/eip-211
+            //     if exec_context.revision < Revision::Byzantium {
+            //         return Err(FailureKind::InvalidInstruction);
+            //     }
             //     Ok(None)
             // },
             // OpCode::RETURNDATACOPY => {
+            //     // EIP-211: https://eips.ethereum.org/EIPS/eip-211
+            //     if exec_context.revision < Revision::Byzantium {
+            //         return Err(FailureKind::InvalidInstruction);
+            //     }
             //     Ok(None)
             // },
             OpCode::EXTCODEHASH => {
@@ -876,12 +886,50 @@ impl Interpreter {
             // OpCode::CREATE => {
             //     Ok(None)
             // },
-            // OpCode::CALL => {
-            //     Ok(None)
-            // },
-            // OpCode::CALLCODE => {
-            //     Ok(None)
-            // },
+            OpCode::CALL => {
+                let gas = context.stack.pop()?;
+                let address = context.stack.pop()?;
+                let address = u256_to_address(address);
+                let value = context.stack.pop()?;
+                let args_offset = context.stack.pop()?;
+                let args_size = context.stack.pop()?;
+                let ret_offset = context.stack.pop()?;
+                let ret_size = context.stack.pop()?;
+                let params = CallParams {
+                    kind: CallKind::Plain,
+                    gas: gas.as_u32() as i64,
+                    address,
+                    value,
+                    args_offset,
+                    args_size,
+                    ret_offset,
+                    ret_size,
+                };
+
+                Ok(Some(Interrupt::Call(params)))
+            },
+            OpCode::CALLCODE => {
+                let gas = context.stack.pop()?;
+                let address = context.stack.pop()?;
+                let address = u256_to_address(address);
+                let value = context.stack.pop()?;
+                let args_offset = context.stack.pop()?;
+                let args_size = context.stack.pop()?;
+                let ret_offset = context.stack.pop()?;
+                let ret_size = context.stack.pop()?;
+                let params = CallParams {
+                    kind: CallKind::CallCode,
+                    gas: gas.as_u32() as i64,
+                    address,
+                    value,
+                    args_offset,
+                    args_size,
+                    ret_offset,
+                    ret_size,
+                };
+
+                Ok(Some(Interrupt::Call(params)))
+            },
 
             OpCode::RETURN => {
                 let offset = stack.pop()?;
@@ -891,15 +939,59 @@ impl Interpreter {
                 Ok(Some(Interrupt::Return(context.gas_left, data)))
             },
 
-            // OpCode::DELEGATECALL => {
-            //     Ok(None)
-            // },
+            OpCode::DELEGATECALL => {
+                // EIP-7: https://eips.ethereum.org/EIPS/eip-7
+                if exec_context.revision < Revision::Homestead {
+                    return Err(FailureKind::InvalidInstruction);
+                }
+                let gas = context.stack.pop()?;
+                let address = context.stack.pop()?;
+                let address = u256_to_address(address);
+                let args_offset = context.stack.pop()?;
+                let args_size = context.stack.pop()?;
+                let ret_offset = context.stack.pop()?;
+                let ret_size = context.stack.pop()?;
+                let params = CallParams {
+                    kind: CallKind::DelegateCall,
+                    gas: gas.as_u32() as i64,
+                    address,
+                    value: U256::zero(),
+                    args_offset,
+                    args_size,
+                    ret_offset,
+                    ret_size,
+                };
+
+                Ok(Some(Interrupt::Call(params)))
+            },
             // OpCode::CREATE2 => {
             //     Ok(None)
             // },
-            // OpCode::STATICCALL => {
-            //     Ok(None)
-            // },
+            OpCode::STATICCALL => {
+                // EIP-214: https://eips.ethereum.org/EIPS/eip-214
+                if exec_context.revision < Revision::Byzantium {
+                    return Err(FailureKind::InvalidInstruction);
+                }
+                let gas = context.stack.pop()?;
+                let address = context.stack.pop()?;
+                let address = u256_to_address(address);
+                let args_offset = context.stack.pop()?;
+                let args_size = context.stack.pop()?;
+                let ret_offset = context.stack.pop()?;
+                let ret_size = context.stack.pop()?;
+                let params = CallParams {
+                    kind: CallKind::StaticCall,
+                    gas: gas.as_u32() as i64,
+                    address,
+                    value: U256::zero(),
+                    args_offset,
+                    args_size,
+                    ret_offset,
+                    ret_size,
+                };
+
+                Ok(Some(Interrupt::Call(params)))
+            },
 
             // OpCode::REVERT => {
             //     Ok(None)
