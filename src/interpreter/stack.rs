@@ -1,6 +1,7 @@
 use serde::Serialize;
 use arrayvec::ArrayVec;
 use ethereum_types::U256;
+use hex::{decode};
 
 use crate::model::evmc::{
     FailureKind,
@@ -119,3 +120,152 @@ impl Memory {
 /// EVM calldata
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct Calldata(pub Vec<u8>);
+
+impl Calldata {
+    pub fn get_word(&self, offset: usize) -> U256 {
+        if offset + 32 < self.0.len() {
+            let word = &self.0[offset..offset+32];
+            U256::from_big_endian(word)
+        }else{
+            let word = &self.0[offset..self.0.len()];
+            let padding_size = 32 - word.len();
+            let mut word = Vec::from(word);
+            for _ in 0..padding_size {
+                word.push(0u8);
+            }
+            U256::from_big_endian(word.as_slice())
+        }
+    }
+
+    pub fn get_range(&self, offset: usize, size: usize) -> Vec<u8> {
+        if offset + size < self.0.len() {
+            let data = &self.0[offset..offset+size];
+            Vec::from(data)
+        }else{
+            let word = &self.0[offset..self.0.len()];
+            let padding_size = size - word.len();
+            let mut word = Vec::from(word);
+            for _ in 0..padding_size {
+                word.push(0u8);
+            }
+            word
+        }
+    }
+}
+
+impl From<&str> for Calldata {
+    fn from(hex: &str) -> Self {
+        let hex = decode(hex).unwrap();
+        Self {
+            0: Vec::from(hex)
+        }
+    }
+}
+
+impl From<Vec<u8>> for Calldata {
+    fn from(data: Vec<u8>) -> Self {
+        Self {
+            0: data
+        }
+    }
+}
+
+#[test]
+fn test_calldata(){
+    let calldata = Calldata{
+        0: vec![
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,1,
+
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,2,
+
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+
+            0,0,0,3,0,0,0,0,
+
+            0,0,0,0,0,0,0,0,
+        ]
+    };
+
+    let word = calldata.get_word(0);
+    assert_eq!(U256::from(1), word);
+
+    let word = calldata.get_word(32);
+    assert_eq!(U256::from(2), word);
+
+    let word = calldata.get_word(68);
+    assert_eq!(U256::from(3), word);
+
+    let expected = vec![
+        3,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,
+    ];
+    let word = calldata.get_word(99);
+
+    assert_eq!(U256::from_big_endian(expected.as_slice()), word);
+
+}
+
+#[test]
+fn test_get_range() {
+    let calldata = Calldata{
+        0: vec![
+            1,2,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,1,
+
+            0,0,0,0,1,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,2,2,2,2,
+
+            2,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,3,
+        ]
+    };
+
+    let data = calldata.get_range(0, 2);
+    assert_eq!(vec![1,2], data);
+
+    let expected = vec![
+        2,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,1,0,
+    ];
+    let data = calldata.get_range(1, 32);
+    assert_eq!(expected, data);
+
+    let expected = vec![
+        0,0,0,0,1,0,0,0,
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,2,2,2,2,
+
+        2,
+    ];
+    let data = calldata.get_range(32, 33);
+    assert_eq!(expected, data);
+
+    let expected = vec![
+        2,2,2,2,
+
+        2,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,3,
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,
+    ];
+    let data = calldata.get_range(60, 32);
+    assert_eq!(expected, data);
+}

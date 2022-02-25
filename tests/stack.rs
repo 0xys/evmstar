@@ -1,11 +1,12 @@
 use bytes::Bytes;
-use hex_literal::hex;
 
 use evmstar::host::host::TransientHost;
 use evmstar::executor::executor::Executor;
 #[allow(unused_imports)]
 use evmstar::model::{
-    code::{Code},
+    code::{
+        Code, Append,
+    },
     opcode::OpCode,
     evmc::{
         StatusCode, FailureKind,
@@ -25,16 +26,16 @@ pub fn test_push() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0xff])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x01])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[31])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)
+        .append(0xff)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append(0x01)
+        .append(OpCode::PUSH1)
+        .append(31)
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -50,7 +51,7 @@ pub fn test_pop_empty() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::POP);
+        .append(OpCode::POP);
     
     let output = executor.execute_raw(&code);
 
@@ -84,16 +85,16 @@ pub fn test_push2() {
         let mut builder = Code::builder();
     
         let code = builder
-            .append_opcode(OpCode::PUSH2)
-            .append(&[0x11,0x22])
-            .append_opcode(OpCode::PUSH1)
-            .append(&[0x00])
-            .append_opcode(OpCode::MSTORE)
-            .append_opcode(OpCode::PUSH1)
-            .append(&[0x02])
-            .append_opcode(OpCode::PUSH1)
-            .append(&[30])
-            .append_opcode(OpCode::RETURN);
+            .append(OpCode::PUSH2)
+            .append("1122")
+            .append(OpCode::PUSH1)
+            .append("00")
+            .append(OpCode::MSTORE)
+            .append(OpCode::PUSH1)
+            .append("02")
+            .append(OpCode::PUSH1)
+            .append(30)
+            .append(OpCode::RETURN);
         
         let output = executor.execute_raw(&code);
     
@@ -107,16 +108,16 @@ pub fn test_push2() {
         let mut builder = Code::builder();
     
         let code = builder
-            .append_opcode(OpCode::PUSH2)
-            .append(&[0x11,0x22])
-            .append_opcode(OpCode::PUSH1)
-            .append(&[0x00])
-            .append_opcode(OpCode::MSTORE)
-            .append_opcode(OpCode::PUSH1)
-            .append(&[0x02])
-            .append_opcode(OpCode::PUSH1)
-            .append(&[31])      // cause memory expansion
-            .append_opcode(OpCode::RETURN);
+            .append(OpCode::PUSH2)
+            .append("1122")
+            .append(OpCode::PUSH1)
+            .append("00")
+            .append(OpCode::MSTORE)
+            .append(OpCode::PUSH1)
+            .append("02")
+            .append(OpCode::PUSH1)
+            .append(31)      // cause memory expansion
+            .append(OpCode::RETURN);
         
         let output = executor.execute_raw(&code);
     
@@ -135,16 +136,16 @@ pub fn test_push32() {
     let data = decode("ff00000000000000000000000000000000000000000000000000000011223344").unwrap();
 
     let code = builder
-        .append_opcode(OpCode::PUSH32)
+        .append(OpCode::PUSH32)
         .append(data.as_slice())
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append(0)
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -163,16 +164,16 @@ pub fn test_push32_with_expansion() {
     let data_right =    decode("ff00000000000000000000001122334400000000000000000000000000000000").unwrap();
 
     let code = builder
-        .append_opcode(OpCode::PUSH32)
+        .append(OpCode::PUSH32)
         .append(data.as_slice())
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x10])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)
+        .append("10")
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -188,15 +189,15 @@ pub fn test_dup1() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x01])
-        .append_opcode(OpCode::DUP1)
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x40])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)
+        .append("01")
+        .append(OpCode::DUP1)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("40")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -214,17 +215,17 @@ pub fn test_dup2() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x01])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x01])
-        .append_opcode(OpCode::DUP2)
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x40])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)
+        .append("01")
+        .append(OpCode::PUSH1)
+        .append("01")
+        .append(OpCode::DUP2)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("40")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -242,19 +243,19 @@ pub fn test_dup3() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x01])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0xff])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x01])
-        .append_opcode(OpCode::DUP3)
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x40])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)
+        .append("01")
+        .append(OpCode::PUSH1)
+        .append("ff")
+        .append(OpCode::PUSH1)
+        .append("01")
+        .append(OpCode::DUP3)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("40")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -272,15 +273,15 @@ pub fn test_dup_overflow() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x01])
-        .append_opcode(OpCode::DUP16)   // overflow
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x40])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)
+        .append("01")
+        .append(OpCode::DUP16)   // overflow
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("40")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     assert_eq!(StatusCode::Failure(FailureKind::StackOverflow), output.status_code);
@@ -293,24 +294,24 @@ pub fn test_swap2swap3() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x02])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x03])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x04])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x05])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x06])
-        .append_opcode(OpCode::SWAP2)
-        .append_opcode(OpCode::SWAP3)
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x40])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)
+        .append("02")
+        .append(OpCode::PUSH1)
+        .append("03")
+        .append(OpCode::PUSH1)
+        .append("04")
+        .append(OpCode::PUSH1)
+        .append("05")
+        .append(OpCode::PUSH1)
+        .append("06")
+        .append(OpCode::SWAP2)
+        .append(OpCode::SWAP3)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("40")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let memory = decode("00000000000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000").unwrap();
@@ -445,7 +446,7 @@ PUSH1 0x00
 RETURN
     */
     let code = builder
-        .append(&hex!("600060aa61aaaa62aaaaaa63aaaaaaaa64aaaaaaaaaa65aaaaaaaaaaaa66aaaaaaaaaaaaaa67aaaaaaaaaaaaaaaa68aaaaaaaaaaaaaaaaaa69aaaaaaaaaaaaaaaaaaaa6aaaaaaaaaaaaaaaaaaaaaaa6baaaaaaaaaaaaaaaaaaaaaaaa6caaaaaaaaaaaaaaaaaaaaaaaaaa6daaaaaaaaaaaaaaaaaaaaaaaaaaaa6eaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa6faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa909192939495969798999a9b9c9d9e9f8f8e8d8c8b8a8988878685848382818060005260205260405260605260805260a05260c05260e05261010052610120526101405261016052610180526101a0526101c0526101e05261020052610220526102405261026052610280526102a0526102c0526102e05261030052610320526103405261036052610380526103a0526103c0526103e0526104006000f3"));
+        .append("600060aa61aaaa62aaaaaa63aaaaaaaa64aaaaaaaaaa65aaaaaaaaaaaa66aaaaaaaaaaaaaa67aaaaaaaaaaaaaaaa68aaaaaaaaaaaaaaaaaa69aaaaaaaaaaaaaaaaaaaa6aaaaaaaaaaaaaaaaaaaaaaa6baaaaaaaaaaaaaaaaaaaaaaaa6caaaaaaaaaaaaaaaaaaaaaaaaaa6daaaaaaaaaaaaaaaaaaaaaaaaaaaa6eaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa6faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa909192939495969798999a9b9c9d9e9f8f8e8d8c8b8a8988878685848382818060005260205260405260605260805260a05260c05260e05261010052610120526101405261016052610180526101a0526101c0526101e05261020052610220526102405261026052610280526102a0526102c0526102e05261030052610320526103405261036052610380526103a0526103c0526103e0526104006000f3");
 
     let output = executor.execute_raw(&code);
     let memory = decode("000000000000000000000000000000000000000000000000000000000000aaaa000000000000000000000000000000000000000000000000000000000000aaaa00000000000000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaa000000000000000000000000000000000000000000000000000000000000aaaa000000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaa00000000000000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaa0000000000000000000000000000000000000000000000000000aaaaaaaaaaaa000000000000000000000000000000000000000000000000000000000000aaaa00000000000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa000000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaa0000000000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaa00000000000000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaa000000000000000000000000000000000000000000000000aaaaaaaaaaaaaaaa0000000000000000000000000000000000000000000000000000aaaaaaaaaaaa00000000000000000000000000000000000000000000000000000000aaaaaaaa000000000000000000000000000000000000000000000000000000000000aaaa000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa000000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaa00000000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaa0000000000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaa000000000000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaaaa00000000000000000000000000000000000000000000aaaaaaaaaaaaaaaaaaaa0000000000000000000000000000000000000000000000aaaaaaaaaaaaaaaaaa000000000000000000000000000000000000000000000000aaaaaaaaaaaaaaaa00000000000000000000000000000000000000000000000000aaaaaaaaaaaaaa0000000000000000000000000000000000000000000000000000aaaaaaaaaaaa000000000000000000000000000000000000000000000000000000aaaaaaaaaa00000000000000000000000000000000000000000000000000000000aaaaaaaa0000000000000000000000000000000000000000000000000000000000aaaaaa000000000000000000000000000000000000000000000000000000000000aaaa").unwrap();

@@ -3,12 +3,19 @@ use arrayvec::ArrayVec;
 
 use crate::model::{
     code::Code,
+    revision::Revision,
 };
 use crate::interpreter::{
     stack::{Stack, Memory, Calldata}
 };
 
-#[derive(Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default)]
+pub struct ExecutionContext {
+    pub refund_counter: i64,
+    pub revision: Revision,
+}
+
+#[derive(Clone, Debug)]
 pub struct CallContext {
     pub pc: usize,
     pub stack: Stack,
@@ -19,7 +26,31 @@ pub struct CallContext {
     pub to: Address,
     pub origin: Address,
     pub value: U256,
+    pub is_staticcall: bool,
+    pub gas_limit: i64,
+    pub gas_left: i64,
+    pub num_of_selfdestruct: i64,
 }
+impl Default for CallContext {
+    fn default() -> Self {
+        CallContext {
+            pc: 0,
+            stack: Stack::default(),
+            memory: Memory::default(),
+            calldata: Calldata::default(),
+            code: Code::default(),
+            caller: Address::default(),
+            to: Address::default(),
+            origin: Address::default(),
+            value: U256::default(),
+            is_staticcall: false,
+            gas_limit: i64::max_value(),
+            gas_left: i64::max_value(),
+            num_of_selfdestruct: 0,
+        }
+    }
+}
+
 
 const SIZE: usize = 1024;
 

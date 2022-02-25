@@ -1,4 +1,5 @@
 pub mod memory;
+pub mod gasometer;
 
 use ethereum_types::U256;
 

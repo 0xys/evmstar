@@ -4,7 +4,9 @@ use evmstar::host::host::TransientHost;
 use evmstar::executor::executor::Executor;
 #[allow(unused_imports)]
 use evmstar::model::{
-    code::{Code},
+    code::{
+        Code, Append,
+    },
     opcode::OpCode,
     evmc::{
         StatusCode, FailureKind,
@@ -24,23 +26,23 @@ pub fn test_pc() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PC)
-        .append_opcode(OpCode::POP)
-        .append_opcode(OpCode::PUSH3)
-        .append(&[0x00, 0x00, 0x00])
-        .append_opcode(OpCode::POP)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::POP)
-        .append_opcode(OpCode::PC)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PC)
+        .append(OpCode::POP)
+        .append(OpCode::PUSH3)
+        .append("000000")
+        .append(OpCode::POP)
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::POP)
+        .append(OpCode::PC)
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("000000000000000000000000000000000000000000000000000000000000000a").unwrap();
@@ -57,25 +59,25 @@ pub fn test_jump() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)   // 0
-        .append(&[0xaa])                // 1
-        .append_opcode(OpCode::PUSH1)   // 2
-        .append(&[0x00])                // 3
-        .append_opcode(OpCode::MSTORE)  // 4
-        .append_opcode(OpCode::PUSH1)   // 5
-        .append(&[13])                  // 6 (jump to 13)
-        .append_opcode(OpCode::JUMP)    // 7
-        .append_opcode(OpCode::PUSH1)   // 8
-        .append(&[0xff])                // 9
-        .append_opcode(OpCode::PUSH1)   // 10
-        .append(&[0x00])                // 11
-        .append_opcode(OpCode::MSTORE)  // 12
-        .append_opcode(OpCode::JUMPDEST)// 13
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)   // 0
+        .append("aa")                // 1
+        .append(OpCode::PUSH1)   // 2
+        .append("00")                // 3
+        .append(OpCode::MSTORE)  // 4
+        .append(OpCode::PUSH1)   // 5
+        .append(13)                  // 6 (jump to 13)
+        .append(OpCode::JUMP)    // 7
+        .append(OpCode::PUSH1)   // 8
+        .append("ff")                // 9
+        .append(OpCode::PUSH1)   // 10
+        .append("00")                // 11
+        .append(OpCode::MSTORE)  // 12
+        .append(OpCode::JUMPDEST)// 13
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("00000000000000000000000000000000000000000000000000000000000000aa").unwrap();
@@ -92,25 +94,25 @@ pub fn test_jump_bad() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)   // 0
-        .append(&[0xaa])                // 1
-        .append_opcode(OpCode::PUSH1)   // 2
-        .append(&[0x00])                // 3
-        .append_opcode(OpCode::MSTORE)  // 4
-        .append_opcode(OpCode::PUSH1)   // 5
-        .append(&[13])                  // 6 (jump to 13)
-        .append_opcode(OpCode::JUMP)    // 7
-        .append_opcode(OpCode::PUSH1)   // 8
-        .append(&[0xff])                // 9
-        .append_opcode(OpCode::PUSH1)   // 10
-        .append(&[0x00])                // 11
-        .append_opcode(OpCode::MSTORE)  // 12
-        .append_opcode(OpCode::PC)      // 13 (not JUMPDEST)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)   // 0
+        .append("aa")                // 1
+        .append(OpCode::PUSH1)   // 2
+        .append("00")                // 3
+        .append(OpCode::MSTORE)  // 4
+        .append(OpCode::PUSH1)   // 5
+        .append(13)                  // 6 (jump to 13)
+        .append(OpCode::JUMP)    // 7
+        .append(OpCode::PUSH1)   // 8
+        .append("ff")                // 9
+        .append(OpCode::PUSH1)   // 10
+        .append("00")                // 11
+        .append(OpCode::MSTORE)  // 12
+        .append(OpCode::PC)      // 13 (not JUMPDEST)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
 
@@ -125,27 +127,27 @@ pub fn test_jumpi() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)   // 0
-        .append(&[0xaa])                // 1
-        .append_opcode(OpCode::PUSH1)   // 2
-        .append(&[0x00])                // 3
-        .append_opcode(OpCode::MSTORE)  // 4
-        .append_opcode(OpCode::PUSH1)   // 5
-        .append(&[0x01])                // 6 (not zero)
-        .append_opcode(OpCode::PUSH1)   // 7
-        .append(&[15])                  // 8 (jumpi to 15)
-        .append_opcode(OpCode::JUMPI)   // 9
-        .append_opcode(OpCode::PUSH1)   // 10
-        .append(&[0xff])                // 11
-        .append_opcode(OpCode::PUSH1)   // 12
-        .append(&[0x00])                // 13
-        .append_opcode(OpCode::MSTORE)  // 14
-        .append_opcode(OpCode::JUMPDEST)// 15
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)   // 0
+        .append("aa")                // 1
+        .append(OpCode::PUSH1)   // 2
+        .append("00")                // 3
+        .append(OpCode::MSTORE)  // 4
+        .append(OpCode::PUSH1)   // 5
+        .append("01")                // 6 (not zero)
+        .append(OpCode::PUSH1)   // 7
+        .append(15)                  // 8 (jumpi to 15)
+        .append(OpCode::JUMPI)   // 9
+        .append(OpCode::PUSH1)   // 10
+        .append("ff")                // 11
+        .append(OpCode::PUSH1)   // 12
+        .append("00")                // 13
+        .append(OpCode::MSTORE)  // 14
+        .append(OpCode::JUMPDEST)// 15
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("00000000000000000000000000000000000000000000000000000000000000aa").unwrap();
@@ -162,27 +164,27 @@ pub fn test_jumpi_condition_unmet() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)   // 0
-        .append(&[0xaa])                // 1
-        .append_opcode(OpCode::PUSH1)   // 2
-        .append(&[0x00])                // 3
-        .append_opcode(OpCode::MSTORE)  // 4
-        .append_opcode(OpCode::PUSH1)   // 5
-        .append(&[0x00])                // 6 (zero)
-        .append_opcode(OpCode::PUSH1)   // 7
-        .append(&[15])                  // 8 (jumpi to 15)
-        .append_opcode(OpCode::JUMPI)   // 9
-        .append_opcode(OpCode::PUSH1)   // 10
-        .append(&[0xff])                // 11
-        .append_opcode(OpCode::PUSH1)   // 12
-        .append(&[0x00])                // 13
-        .append_opcode(OpCode::MSTORE)  // 14
-        .append_opcode(OpCode::JUMPDEST)// 15
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)   // 0
+        .append("aa")                // 1
+        .append(OpCode::PUSH1)   // 2
+        .append("00")                // 3
+        .append(OpCode::MSTORE)  // 4
+        .append(OpCode::PUSH1)   // 5
+        .append("00")                // 6 (zero)
+        .append(OpCode::PUSH1)   // 7
+        .append(15)                  // 8 (jumpi to 15)
+        .append(OpCode::JUMPI)   // 9
+        .append(OpCode::PUSH1)   // 10
+        .append("ff")                // 11
+        .append(OpCode::PUSH1)   // 12
+        .append("00")                // 13
+        .append(OpCode::MSTORE)  // 14
+        .append(OpCode::JUMPDEST)// 15
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("00000000000000000000000000000000000000000000000000000000000000ff").unwrap();
@@ -199,27 +201,27 @@ pub fn test_jumpi_bad() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::PUSH1)   // 0
-        .append(&[0xaa])                // 1
-        .append_opcode(OpCode::PUSH1)   // 2
-        .append(&[0x00])                // 3
-        .append_opcode(OpCode::MSTORE)  // 4
-        .append_opcode(OpCode::PUSH1)   // 5
-        .append(&[0x01])                // 6 (not zero)
-        .append_opcode(OpCode::PUSH1)   // 7
-        .append(&[15])                  // 8 (jumpi to 15)
-        .append_opcode(OpCode::JUMPI)   // 9
-        .append_opcode(OpCode::PUSH1)   // 10
-        .append(&[0xff])                // 11
-        .append_opcode(OpCode::PUSH1)   // 12
-        .append(&[0x00])                // 13
-        .append_opcode(OpCode::MSTORE)  // 14
-        .append_opcode(OpCode::PC)      // 15 (not JUMPDEST)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::PUSH1)   // 0
+        .append("aa")                // 1
+        .append(OpCode::PUSH1)   // 2
+        .append("00")                // 3
+        .append(OpCode::MSTORE)  // 4
+        .append(OpCode::PUSH1)   // 5
+        .append("01")                // 6 (not zero)
+        .append(OpCode::PUSH1)   // 7
+        .append(15)                  // 8 (jumpi to 15)
+        .append(OpCode::JUMPI)   // 9
+        .append(OpCode::PUSH1)   // 10
+        .append("ff")                // 11
+        .append(OpCode::PUSH1)   // 12
+        .append("00")                // 13
+        .append(OpCode::MSTORE)  // 14
+        .append(OpCode::PC)      // 15 (not JUMPDEST)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     assert_eq!(StatusCode::Failure(FailureKind::BadJumpDestination), output.status_code);

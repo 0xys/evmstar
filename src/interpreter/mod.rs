@@ -8,7 +8,9 @@ use ethereum_types::{
 use bytes::Bytes;
 
 use crate::model::evmc::{
-    TxContext
+    TxContext,
+    AccessStatus,
+    StorageStatus,
 };
 
 pub type StorageKey = U256;
@@ -22,8 +24,9 @@ pub enum Interrupt {
     Balance(Address),
     GetStorage(Address, StorageKey),
     SetStorage(Address, StorageKey, StorageValue),
-    GetCodeSize(Address),
-    GetCodeHash(Address),
+    GetExtCodeSize(Address),
+    GetExtCode(Address, usize, usize, usize),
+    GetExtCodeHash(Address),
     CopyCode(Address, usize),
     SelfDestruct(Address, Address),
     Call,
@@ -33,14 +36,23 @@ pub enum Interrupt {
     Context(ContextKind),
     Jump,
 
-    Return(i64, Bytes),
-}
+    Blockhash(usize),
 
+    Return(i64, Bytes),
+    Stop(i64),
+    Revert(i64),
+}
 
 pub enum Resume {
     Init,
     Balance(U256),
     Context(ContextKind, TxContext),
+    GetStorage(StorageValue, AccessStatus),
+    SetStorage(StorageValue, AccessStatus, StorageStatus),
+    Blockhash(U256),
+    GetExtCodeSize(U256, AccessStatus),
+    GetExtCode(Bytes, AccessStatus, usize),
+    GetExtCodeHash(U256, AccessStatus),
     Unknown,
 }
 

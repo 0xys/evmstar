@@ -5,7 +5,9 @@ use evmstar::host::host::TransientHost;
 use evmstar::executor::executor::Executor;
 #[allow(unused_imports)]
 use evmstar::model::{
-    code::{Code},
+    code::{
+        Code, Append,
+    },
     opcode::OpCode,
     evmc::{
         StatusCode, FailureKind,
@@ -40,15 +42,15 @@ fn test_gas_price() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::GASPRICE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::GASPRICE)
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000001234").unwrap();
@@ -65,15 +67,15 @@ fn test_coinbase() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::COINBASE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::COINBASE)
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("000000000000000000000000000000000000000000000000000000000000abcd").unwrap();
@@ -90,15 +92,15 @@ fn test_block_number() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::NUMBER)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::NUMBER)
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000001111").unwrap();
@@ -115,15 +117,15 @@ fn test_block_timestamp() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::TIMESTAMP)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::TIMESTAMP)
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000002222").unwrap();
@@ -140,15 +142,15 @@ fn test_gas_limit() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::GASLIMIT)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::GASLIMIT)
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000003333").unwrap();
@@ -165,15 +167,15 @@ fn test_base_fee() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::BASEFEE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::BASEFEE)
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000004444").unwrap();
@@ -190,15 +192,15 @@ fn test_chain_id() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::CHAINID)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::CHAINID)
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000000001").unwrap();
@@ -215,15 +217,15 @@ fn test_difficulty() {
     let mut builder = Code::builder();
 
     let code = builder
-        .append_opcode(OpCode::DIFFICULTY)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::MSTORE)
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x20])
-        .append_opcode(OpCode::PUSH1)
-        .append(&[0x00])
-        .append_opcode(OpCode::RETURN);
+        .append(OpCode::DIFFICULTY)
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
     
     let output = executor.execute_raw(&code);
     let data = decode("0000000000000000000000000000000000000000000000000000000000005555").unwrap();
@@ -231,4 +233,31 @@ fn test_difficulty() {
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::from(data), output.data);
     assert_eq!(consumed_gas(17), output.gas_left);
+}
+
+#[test]
+fn test_blockhash() {
+    let host = TransientHost::new_with_context(get_default_context());
+    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let mut builder = Code::builder();
+
+    let code = builder
+        .append(OpCode::PUSH1)
+        .append("01")
+        .append(OpCode::BLOCKHASH)
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append("20")
+        .append(OpCode::PUSH1)
+        .append("00")
+        .append(OpCode::RETURN);
+    
+    let output = executor.execute_raw(&code);
+    let data = decode("0000000000000000000000000000000000000000000000000000000000000101").unwrap();
+
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(data), output.data);
+    assert_eq!(consumed_gas(38), output.gas_left);
 }

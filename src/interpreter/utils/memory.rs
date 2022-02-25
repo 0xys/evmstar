@@ -28,7 +28,7 @@ pub fn mload(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64
 }
 
 /// store the top item of the stack into memory at `offset`.
-/// any padding occurred will incur gas cost.
+/// any padding added will incur gas cost.
 pub fn mstore(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64) -> Result<i64, FailureKind> {
     if offset > U256::from(MAX_BUFFER_SIZE) {
         return Err(FailureKind::ArgumentOutOfRange);
@@ -45,7 +45,7 @@ pub fn mstore(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i6
 }
 
 /// store the top item of the stack into memory at `offset`.
-/// any padding occurred will incur gas cost.
+/// any padding added will incur gas cost.
 pub fn mstore8(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64) -> Result<i64, FailureKind> {
     if offset > U256::from(MAX_BUFFER_SIZE) {
         return Err(FailureKind::ArgumentOutOfRange);
@@ -57,6 +57,25 @@ pub fn mstore8(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i
     memory.set(offset, (top.low_u32() & 0xff) as u8);
 
     Ok(gas_consumed)
+}
+
+/// store variable-sized byte array into memory at `offset`
+/// any padding added will incur gas cost.
+/// return dynamic part of the cost.
+pub fn mstore_data(offset: U256, memory: &mut Memory, data: &[u8], gas_left: i64) -> Result<i64, FailureKind> {
+    if offset > U256::from(MAX_BUFFER_SIZE) {
+        return Err(FailureKind::ArgumentOutOfRange);
+    }
+
+    let min_word_size = (data.len() + 31) / 32;
+
+    let offset = offset.as_usize();
+    let expansion_cost = try_expand_memory(offset, data.len(), memory, gas_left)?;
+    let word_cost: i64 = 3 * min_word_size as i64;
+
+    memory.set_range(offset, data);
+
+    Ok(expansion_cost + word_cost)
 }
 
 /// return value of `size` at `offset` in memory.
