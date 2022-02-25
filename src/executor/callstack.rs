@@ -81,17 +81,17 @@ impl CallStack {
         Ok(())
     }
 
-    pub fn peek(&self) -> Option<&CallContext> {
+    pub fn peek(&self) -> CallContext {
         if self.is_empty() {
-            return None;
+            panic!("call stack must not be empty");
         }
-        Some(&self.0[self.0.len() - 1])
+        (*self.0[self.0.len() - 1]).clone()
     }
 
-    pub fn pop(&mut self) -> Result<CallContext, FailureKind> {
+    pub fn pop(&mut self) -> Option<CallContext> {
         if let Some(top) = self.0.pop() {
-            return Ok(*top);
+            return Some(*top);
         }
-        Err(FailureKind::CallDepthExceeded)
+        None
     }
 }

@@ -170,6 +170,14 @@ impl From<Vec<u8>> for Calldata {
     }
 }
 
+impl From<&[u8]> for Calldata {
+    fn from(u8a: &[u8]) -> Self {
+        Self {
+            0: Vec::from(u8a)
+        }
+    }
+}
+
 #[test]
 fn test_calldata(){
     let calldata = Calldata{

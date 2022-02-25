@@ -900,10 +900,10 @@ impl Interpreter {
                     gas: gas.as_u32() as i64,
                     address,
                     value,
-                    args_offset,
-                    args_size,
-                    ret_offset,
-                    ret_size,
+                    args_offset: args_offset.as_usize(),
+                    args_size: args_size.as_usize(),
+                    ret_offset: ret_offset.as_usize(),
+                    ret_size: ret_size.as_usize(),
                 };
 
                 Ok(Some(Interrupt::Call(params)))
@@ -922,10 +922,10 @@ impl Interpreter {
                     gas: gas.as_u32() as i64,
                     address,
                     value,
-                    args_offset,
-                    args_size,
-                    ret_offset,
-                    ret_size,
+                    args_offset: args_offset.as_usize(),
+                    args_size: args_size.as_usize(),
+                    ret_offset: ret_offset.as_usize(),
+                    ret_size: ret_size.as_usize(),
                 };
 
                 Ok(Some(Interrupt::Call(params)))
@@ -956,10 +956,10 @@ impl Interpreter {
                     gas: gas.as_u32() as i64,
                     address,
                     value: U256::zero(),
-                    args_offset,
-                    args_size,
-                    ret_offset,
-                    ret_size,
+                    args_offset: args_offset.as_usize(),
+                    args_size: args_size.as_usize(),
+                    ret_offset: ret_offset.as_usize(),
+                    ret_size: ret_size.as_usize(),
                 };
 
                 Ok(Some(Interrupt::Call(params)))
@@ -984,10 +984,10 @@ impl Interpreter {
                     gas: gas.as_u32() as i64,
                     address,
                     value: U256::zero(),
-                    args_offset,
-                    args_size,
-                    ret_offset,
-                    ret_size,
+                    args_offset: args_offset.as_usize(),
+                    args_size: args_size.as_usize(),
+                    ret_offset: ret_offset.as_usize(),
+                    ret_size: ret_size.as_usize(),
                 };
 
                 Ok(Some(Interrupt::Call(params)))

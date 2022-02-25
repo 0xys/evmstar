@@ -5,6 +5,7 @@ use crate::host::Host;
 use crate::executor::callstack::{
     CallStack, CallContext, ExecutionContext
 };
+use crate::interpreter::{CallParams, CallKind};
 use crate::interpreter::stack::Calldata;
 use crate::interpreter::{
     Interrupt,
@@ -111,8 +112,6 @@ impl Executor {
     }
 
     pub fn execute_raw_with(&mut self, mut context: CallContext) -> Output {
-        let mut resume = Resume::Init;
-
         let mut exec_context = ExecutionContext {
             refund_counter: 0,
             revision: self.revision
@@ -147,6 +146,7 @@ impl Executor {
             }
         }
 
+        let mut resume = Resume::Init;
         loop {
             let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut exec_context);
             
@@ -160,12 +160,27 @@ impl Executor {
 
             match interrupt {
                 Interrupt::Return(gas_left, data) => {
+                    "TODO"
+                    match self.callstack.pop() {
+                        None => {
+                            return Output::new_failure(FailureKind::CallDepthExceeded, 0);
+                        },
+                        Some(context) => context,
+                    };
                     let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, context.num_of_selfdestruct, self.revision);
                     return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
                 },
                 Interrupt::Stop(gas_left) => {
                     let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, context.num_of_selfdestruct, self.revision);
                     return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, Bytes::default());
+                },
+                Interrupt::Call(params) => {
+                    match self.push_new_call_context(&params) {
+                        Err(kind) => {
+                            return Output::new_failure(kind, 0);
+                        },
+                        _ => (),
+                    }
                 }
                 _ => ()
             };
@@ -246,12 +261,66 @@ impl Executor {
                 let storage_status = self.host.set_storage(*address, *key, *new_value);
                 Resume::SetStorage(*new_value, access_status, storage_status)
             },
-            Interrupt::Call(_params) => {
-                panic!("TODO call interrupt.");
+            Interrupt::Call(_) => {
+                Resume::Init
             },
             _ => {
                 Resume::Unknown
             }
+        }
+    }
+
+    fn push_new_call_context(&mut self, params: &CallParams) -> Result<(), FailureKind> {
+        let mut current_context = self.callstack.peek();
+        let (dynamic_cost, new_context) = self.create_call_context(&current_context, params);
+    
+        if !consume_gas(&mut current_context.gas_left, dynamic_cost) {
+            return Err(FailureKind::OutOfGas)
+        }
+                
+        self.callstack.push(new_context)?;
+
+        Ok(())
+    }
+
+    fn create_call_context(&self, current: &CallContext, params: &CallParams) -> (i64, CallContext) {
+        match params.kind {
+            CallKind::Plain => {
+                let mut context = CallContext::default();
+                context.origin = current.origin;
+                context.caller = current.code_address;
+                context.to = params.address;
+                context.code_address = params.address;
+
+                context.calldata = Calldata::default(); // TODO
+
+                let code_size = self.host.get_code_size(params.address);
+                context.code = self.host.get_code(params.address, 0, code_size.as_usize()).into();
+                
+                context.value = params.value;
+                
+                let mut gas = params.gas;
+                if params.value.is_zero() {
+                    gas += 2300;    // gas stipend is added out of thin air.
+                }
+
+                context.gas_limit = gas;
+                context.gas_left = gas;
+
+                (0, context)
+            },
+            CallKind::CallCode => {
+                let mut context = CallContext::default();
+                (0, context)
+            },
+            CallKind::StaticCall => {
+                let mut context = CallContext::default();
+                (0, context)
+            },
+            CallKind::DelegateCall => {
+                let mut context = CallContext::default();
+                (0, context)
+            },
         }
     }
 }

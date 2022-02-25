@@ -56,7 +56,6 @@ pub enum Resume {
     GetExtCodeSize(U256, AccessStatus),
     GetExtCode(Bytes, AccessStatus, usize),
     GetExtCodeHash(U256, AccessStatus),
-    Call(bool),
     Unknown,
 }
 
@@ -78,10 +77,10 @@ pub struct CallParams {
     pub gas: i64,
     pub address: Address,
     pub value: U256,
-    pub args_offset: U256,
-    pub args_size: U256,
-    pub ret_offset: U256,
-    pub ret_size: U256,
+    pub args_offset: usize,
+    pub args_size: usize,
+    pub ret_offset: usize,
+    pub ret_size: usize,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use hex::decode;
 use super::opcode::OpCode;
 
@@ -48,6 +49,13 @@ impl From<&[u8]> for Code {
     fn from(u8a: &[u8]) -> Self {
         Code {
             0: Vec::from(u8a)
+        }
+    }
+}
+impl From<Bytes> for Code {
+    fn from(bytes: Bytes) -> Self {
+        Code {
+            0: bytes.to_vec()
         }
     }
 }
