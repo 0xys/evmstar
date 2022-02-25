@@ -127,8 +127,28 @@ impl Interpreter {
         
         match resume {
             Resume::Init => (),
-            Resume::Balance(balance) => {
+            Resume::Balance(balance, access_status) => {
+                let gas = 
+                    if exec_context.revision >= Revision::Berlin {
+                        match access_status {
+                            AccessStatus::Cold => 2600,
+                            AccessStatus::Warm => 100,
+                        }
+                    }else{
+                        if exec_context.revision < Revision::Tangerine {
+                            20
+                        }else if exec_context.revision < Revision::Istanbul {
+                            400
+                        }else{
+                            700
+                        }
+                    };
                 stack.push_unchecked(balance);
+                Self::consume_constant_gas(&mut call_context.gas_left, gas)?;
+            },
+            Resume::SelfBalance(balance) => {
+                stack.push(balance)?;
+                Self::consume_constant_gas(&mut call_context.gas_left, 5)?;
             },
             Resume::Context(kind, context) => {
                 self.handle_resume_context(kind, &context, stack)?
@@ -479,6 +499,10 @@ impl Interpreter {
                 Ok(None)
             },
             OpCode::SHL => {
+                // EIP-145: https://eips.ethereum.org/EIPS/eip-145
+                if exec_context.revision < Revision::Constantinople {
+                    return Err(FailureKind::InvalidInstruction);
+                }
                 Self::consume_constant_gas(&mut context.gas_left, 3)?;
                 let shift = stack.pop()?;
                 let value = stack.pop()?;
@@ -493,6 +517,10 @@ impl Interpreter {
                 Ok(None)
             },
             OpCode::SHR => {
+                // EIP-145: https://eips.ethereum.org/EIPS/eip-145
+                if exec_context.revision < Revision::Constantinople {
+                    return Err(FailureKind::InvalidInstruction);
+                }
                 Self::consume_constant_gas(&mut context.gas_left, 3)?;
                 let shift = stack.pop()?;
                 let value = stack.pop()?;
@@ -507,6 +535,10 @@ impl Interpreter {
                 Ok(None)
             },
             OpCode::SAR => {
+                // EIP-145: https://eips.ethereum.org/EIPS/eip-145
+                if exec_context.revision < Revision::Constantinople {
+                    return Err(FailureKind::InvalidInstruction);
+                }
                 Self::consume_constant_gas(&mut context.gas_left, 3)?;
                 let shift = stack.pop()?;
                 let value = stack.pop()?;
@@ -540,15 +572,17 @@ impl Interpreter {
             // OpCode::KECCAK256 => {
             //     Ok(None)
             // },
-            // OpCode::ADDRESS => {
-            //     Self::consume_constant_gas(&mut context.gas_left, 2)?;
-            //     let address= address_to_u256(context.to);
-            //     stack.push(address)?;
-            //     Ok(None)
-            // },
-            // Opcode::BALANCE => {
-            //     Ok(None)
-            // },
+            OpCode::ADDRESS => {
+                Self::consume_constant_gas(&mut context.gas_left, 2)?;
+                let address= address_to_u256(context.code_address);
+                stack.push(address)?;
+                Ok(None)
+            },
+            OpCode::BALANCE => {
+                let address = context.stack.pop()?;
+                let address = u256_to_address(address);
+                Ok(Some(Interrupt::Balance(address)))
+            },
             OpCode::ORIGIN => {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
                 let origin = address_to_u256(context.origin);
@@ -626,6 +660,10 @@ impl Interpreter {
             //     Ok(None)
             // },
             OpCode::EXTCODEHASH => {
+                // EIP-1052: https://eips.ethereum.org/EIPS/eip-1052
+                if exec_context.revision < Revision::Constantinople {
+                    return Err(FailureKind::InvalidInstruction);
+                }
                 let address = stack.pop()?;
                 let address = u256_to_address(address);
                 Ok(Some(Interrupt::GetExtCodeHash(address)))
@@ -656,14 +694,25 @@ impl Interpreter {
                 Ok(Some(Interrupt::Context(ContextKind::GasLimit)))
             },
             OpCode::CHAINID => {
+                // EIP-1344: https://eips.ethereum.org/EIPS/eip-1344
+                if exec_context.revision < Revision::Istanbul {
+                    return Err(FailureKind::InvalidInstruction);
+                }
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
                 Ok(Some(Interrupt::Context(ContextKind::ChainId)))
             },
-            // OpCode::SELFBALANCE => {
-            //     Self::consume_constant_gas(&mut context.gas_left, 5)?;
-            //     Ok(None)
-            // },
+            OpCode::SELFBALANCE => {
+                // EIP-1884: https://eips.ethereum.org/EIPS/eip-1884
+                if exec_context.revision < Revision::Istanbul {
+                    return Err(FailureKind::InvalidInstruction);
+                }
+                Ok(Some(Interrupt::SelfBalance(context.code_address)))
+            },
             OpCode::BASEFEE => {
+                // EIP-3198: https://eips.ethereum.org/EIPS/eip-3198
+                if exec_context.revision < Revision::London {
+                    return Err(FailureKind::InvalidInstruction);
+                }
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
                 Ok(Some(Interrupt::Context(ContextKind::BaseFee)))
             }

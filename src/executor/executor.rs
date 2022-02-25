@@ -183,9 +183,18 @@ impl Executor {
     fn handle_interrupt(&mut self, interrupt: &Interrupt) -> Resume {
         match interrupt {
             Interrupt::Balance(address) => {
+                let access_status = if self.revision >= Revision::Berlin {
+                    self.host.access_account(*address)
+                }else{
+                    AccessStatus::Warm
+                };
                 let balance = self.host.get_balance(*address);
-                Resume::Balance(balance)
+                Resume::Balance(balance, access_status)
             },
+            Interrupt::SelfBalance(address) => {
+                let balance = self.host.get_balance(*address);
+                Resume::SelfBalance(balance)
+            }
             Interrupt::Context(kind) => {
                 let context = self.host.get_tx_context();
                 Resume::Context(*kind, context)
