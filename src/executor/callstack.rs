@@ -1,6 +1,7 @@
 use ethereum_types::{Address, U256};
 use arrayvec::ArrayVec;
 
+use crate::model::evmc::FailureKind;
 use crate::model::{
     code::Code,
     revision::Revision,
@@ -70,29 +71,27 @@ impl CallStack {
         self.0.is_empty()
     }
 
-    pub fn push(&mut self, value: CallContext) {
+    pub fn push(&mut self, value: CallContext) -> Result<(), FailureKind> {
+        if self.0.len() >= SIZE {
+            return Err(FailureKind::CallDepthExceeded);
+        }
         unsafe {
             self.0.push_unchecked(Box::new(value));
         }
+        Ok(())
     }
 
-    pub fn peek(&self) -> Result<&CallContext, CallStackOperationError> {
+    pub fn peek(&self) -> Option<&CallContext> {
         if self.is_empty() {
-            return Err(CallStackOperationError::StackUnderflow);
+            return None;
         }
-        Ok(&self.0[self.0.len() - 1])
+        Some(&self.0[self.0.len() - 1])
     }
 
-    pub fn pop(&mut self) -> Result<CallContext, CallStackOperationError> {
+    pub fn pop(&mut self) -> Result<CallContext, FailureKind> {
         if let Some(top) = self.0.pop() {
             return Ok(*top);
         }
-        Err(CallStackOperationError::StackUnderflow)
+        Err(FailureKind::CallDepthExceeded)
     }
-}
-
-
-pub enum CallStackOperationError {
-    StackUnderflow,
-    StackOverflow,
 }
