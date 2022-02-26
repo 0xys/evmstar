@@ -794,7 +794,7 @@ impl Interpreter {
                 // https://eips.ethereum.org/EIPS/eip-214
                 if exec_context.revision >= Revision::Byzantium {
                     if scope.is_staticcall {
-                        return Err(FailureKind::StaticModeViolcation)
+                        return Err(FailureKind::StaticModeViolation)
                     }
                 }
 
