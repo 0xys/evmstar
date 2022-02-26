@@ -90,5 +90,10 @@ impl Host for TransientHost {
     fn get_code(&self, address: Address, offset: usize, size: usize) -> Bytes {
         Bytes::default()
     }
+    fn add_balance(&mut self, address: Address, amount: U256){
 
+    }
+    fn subtract_balance(&mut self, address: Address, amount: U256){
+
+    }
 }

@@ -332,4 +332,20 @@ impl Host for StatefulHost {
             .map(|account| account.code.clone())
             .unwrap_or_else(Bytes::default)
     }
+    fn add_balance(&mut self, address: Address, amount: U256){
+        let account = self
+            .accounts
+            .entry(address)
+            .or_default();
+        
+        account.balance += amount;
+    }
+    fn subtract_balance(&mut self, address: Address, amount: U256){
+        let account = self
+            .accounts
+            .entry(address)
+            .or_default();
+        
+        account.balance -= amount;
+    }
 }
