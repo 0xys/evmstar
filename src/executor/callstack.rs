@@ -19,7 +19,7 @@ pub struct ExecutionContext {
 }
 
 #[derive(Clone, Debug)]
-pub struct CallContext {
+pub struct CallScope {
     pub pc: usize,
     pub stack: Stack,
     pub memory: Memory,
@@ -36,9 +36,9 @@ pub struct CallContext {
     pub ret_offset: usize,
     pub ret_size: usize,
 }
-impl Default for CallContext {
+impl Default for CallScope {
     fn default() -> Self {
-        CallContext {
+        CallScope {
             pc: 0,
             stack: Stack::default(),
             memory: Memory::default(),
@@ -63,7 +63,7 @@ const SIZE: usize = 1024;
 
 /// evm execution call stack
 #[derive(Clone, Debug, Default)]
-pub struct CallStack(pub Vec<RefCell<CallContext>>);
+pub struct CallStack(pub Vec<RefCell<CallScope>>);
 
 impl CallStack {
 
@@ -75,7 +75,7 @@ impl CallStack {
         self.0.is_empty()
     }
 
-    pub fn push(&mut self, value: CallContext) -> Result<(), FailureKind> {
+    pub fn push(&mut self, value: CallScope) -> Result<(), FailureKind> {
         if self.0.len() >= SIZE {
             return Err(FailureKind::CallDepthExceeded);
         }
@@ -83,14 +83,14 @@ impl CallStack {
         Ok(())
     }
 
-    pub fn peek(&self) -> &RefCell<CallContext> {
+    pub fn peek(&self) -> &RefCell<CallScope> {
         if self.is_empty() {
             panic!("call stack must not be empty");
         }
         self.0.get(self.0.len() - 1).unwrap()
     }
 
-    pub fn pop(&mut self) -> Option<RefCell<CallContext>> {
+    pub fn pop(&mut self) -> Option<RefCell<CallScope>> {
         self.0.pop()
     }
 }

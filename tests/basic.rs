@@ -1,4 +1,4 @@
-use evmstar::executor::callstack::CallContext;
+use evmstar::executor::callstack::CallScope;
 use evmstar::host::host::{
     TransientHost,
 };
@@ -44,7 +44,7 @@ fn test_calldata_cost() {
         let host = TransientHost::new();
         let mut executor = Executor::new_with_execution_cost(Box::new(host), true, revision);
 
-        let mut context = CallContext::default();
+        let mut context = CallScope::default();
         let mut vec: Vec<u8> = Vec::new();
         for i in 0..0xff {
             vec.push(i);

@@ -3,7 +3,7 @@ use std::cmp::min;
 
 use crate::host::Host;
 use crate::executor::callstack::{
-    CallStack, CallContext, ExecutionContext
+    CallStack, CallScope, ExecutionContext
 };
 use crate::interpreter::{CallParams, CallKind};
 use crate::interpreter::stack::{Calldata};
@@ -85,7 +85,7 @@ impl Executor {
     /// execute with eip-2930 access list provided.
     /// 
     /// https://eips.ethereum.org/EIPS/eip-2930
-    pub fn execute_with_access_list(&mut self, mut context: CallContext, access_list: AccessList) -> Output {
+    pub fn execute_with_access_list(&mut self, mut scope: CallScope, access_list: AccessList) -> Output {
         if self.revision < Revision::Berlin {
             panic!("eip2930 is enabled after Berlin onward.");
         }
@@ -94,7 +94,7 @@ impl Executor {
             self.host.access_account(access.0);
             if self.is_execution_cost_on {
                 let account_cost = 2400 * access.1.0;
-                if !consume_gas(&mut context.gas_left, account_cost as i64){
+                if !consume_gas(&mut scope.gas_left, account_cost as i64){
                     return Output::new_failure(FailureKind::OutOfGas, 0);
                 }
             }
@@ -102,16 +102,16 @@ impl Executor {
             for key in access.1.1 {
                 self.host.access_storage(access.0, key);
                 if self.is_execution_cost_on {
-                    if !consume_gas(&mut context.gas_left, 1900){
+                    if !consume_gas(&mut scope.gas_left, 1900){
                         return Output::new_failure(FailureKind::OutOfGas, 0);
                     }
                 }
             }
         }
-        self.execute_raw_with(context)
+        self.execute_raw_with(scope)
     }
 
-    pub fn execute_raw_with(&mut self, mut context: CallContext) -> Output {
+    pub fn execute_raw_with(&mut self, mut scope: CallScope) -> Output {
         let mut exec_context = ExecutionContext {
             refund_counter: 0,
             revision: self.revision,
@@ -120,7 +120,7 @@ impl Executor {
 
         if self.revision >= Revision::Spurious {
             // EIP-170: https://eips.ethereum.org/EIPS/eip-170
-            if context.code.0.len() > MAX_CODE_SIZE {
+            if scope.code.0.len() > MAX_CODE_SIZE {
                 return Output::new_failure(FailureKind::OutOfGas, 0);
             }
         }
@@ -130,28 +130,28 @@ impl Executor {
             // accessed_addresses is initialized to include
             // the tx.sender, tx.to (or the address being created if it is a contract creation transaction)
             // and the set of all precompiles.
-            self.host.access_account(context.to);
-            self.host.access_account(context.caller);
+            self.host.access_account(scope.to);
+            self.host.access_account(scope.caller);
         }
 
         if self.is_execution_cost_on {
             // intrinsic gas cost deduction
-            if !consume_gas(&mut context.gas_left, 21000){
+            if !consume_gas(&mut scope.gas_left, 21000){
                 return Output::new_failure(FailureKind::OutOfGas, 0);
             }
 
-            let calldata_cost = cost_of_calldata(&context.calldata, self.revision);
+            let calldata_cost = cost_of_calldata(&scope.calldata, self.revision);
             // calldata cost deduction
-            if !consume_gas(&mut context.gas_left, calldata_cost){
+            if !consume_gas(&mut scope.gas_left, calldata_cost){
                 return Output::new_failure(FailureKind::OutOfGas, 0);
             }
         }
 
-        self.callstack.push(context.clone()).unwrap();
+        self.callstack.push(scope.clone()).unwrap();
 
         let mut resume = Resume::Init;
         loop {
-            let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut exec_context, &mut self.host);
+            let interrupt = self.interpreter.resume_interpret(resume, &mut scope, &mut exec_context, &mut self.host);
             
             let interrupt = match interrupt {
                 Ok(i) => i,
@@ -162,7 +162,7 @@ impl Executor {
                     };
                     if self.callstack.is_empty() {
                         match failure_kind {
-                            FailureKind::Revert => return Output::new_failure(failure_kind, context.gas_left),
+                            FailureKind::Revert => return Output::new_failure(failure_kind, scope.gas_left),
                             _ => return Output::new_failure(failure_kind, 0),
                         }
                     }
@@ -189,7 +189,7 @@ impl Executor {
                     };
                     let src = src.borrow_mut();
                     if self.callstack.is_empty() {
-                        let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
+                        let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
                         return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
                     }
                     let dest = self.callstack.peek();
@@ -202,7 +202,7 @@ impl Executor {
                     continue;
                 },
                 Interrupt::Stop(gas_left) => {
-                    let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
+                    let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
                     return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, Bytes::default());
                 },
                 Interrupt::Call(params) => {
@@ -221,9 +221,9 @@ impl Executor {
     }
 
     pub fn execute_raw(&mut self, code: &Code) -> Output {
-        let mut context = CallContext::default();
-        context.code = code.clone();
-        self.execute_raw_with(context)
+        let mut scope = CallScope::default();
+        scope.code = code.clone();
+        self.execute_raw_with(scope)
     }
 
     fn handle_interrupt(&mut self, interrupt: &Interrupt) -> Resume {
@@ -254,45 +254,45 @@ impl Executor {
         Ok(())
     }
 
-    fn create_call_context(&self, current: &CallContext, params: &CallParams) -> (i64, CallContext) {
+    fn create_call_context(&self, current: &CallScope, params: &CallParams) -> (i64, CallScope) {
         match params.kind {
             CallKind::Plain => {
-                let mut context = CallContext::default();
-                context.origin = current.origin;
-                context.caller = current.code_address;
-                context.to = params.address;
-                context.code_address = params.address;
+                let mut scope = CallScope::default();
+                scope.origin = current.origin;
+                scope.caller = current.code_address;
+                scope.to = params.address;
+                scope.code_address = params.address;
 
-                context.calldata = Calldata::default(); // TODO
+                scope.calldata = Calldata::default(); // TODO
 
                 let code_size = self.host.get_code_size(params.address);
-                context.code = self.host.get_code(params.address, 0, code_size.as_usize()).into();
+                scope.code = self.host.get_code(params.address, 0, code_size.as_usize()).into();
                 
-                context.value = params.value;
+                scope.value = params.value;
                 
                 let mut gas = params.gas;
                 if params.value.is_zero() {
                     gas += 2300;    // gas stipend is added out of thin air.
                 }
 
-                context.gas_limit = gas;
-                context.gas_left = gas;
+                scope.gas_limit = gas;
+                scope.gas_left = gas;
 
-                context.ret_offset = params.ret_offset;
-                context.ret_size = params.ret_size;
+                scope.ret_offset = params.ret_offset;
+                scope.ret_size = params.ret_size;
 
-                (0, context)
+                (0, scope)
             },
             CallKind::CallCode => {
-                let context = CallContext::default();
+                let context = CallScope::default();
                 (0, context)
             },
             CallKind::StaticCall => {
-                let context = CallContext::default();
+                let context = CallScope::default();
                 (0, context)
             },
             CallKind::DelegateCall => {
-                let context = CallContext::default();
+                let context = CallScope::default();
                 (0, context)
             },
         }

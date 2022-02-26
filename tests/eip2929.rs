@@ -6,7 +6,7 @@ use evmstar::host::stateful::{
     StatefulHost,
 };
 use evmstar::executor::{
-    callstack::CallContext,
+    callstack::CallScope,
     executor::Executor,
 };
 #[allow(unused_imports)]
@@ -50,7 +50,7 @@ fn sstore_eip2929(code: Vec<u8>, gas_used: i64, gas_refund: i64, warm: bool, ori
 
     let mut builder = Code::builder();
     let code = builder.append(code.as_slice());
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
