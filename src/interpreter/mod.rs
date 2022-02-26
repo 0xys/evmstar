@@ -14,12 +14,8 @@ pub type LogTopics = Vec<U256>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Interrupt {
-    AccountExists(Address),
-    CopyCode(Address, usize),
     SelfDestruct(Address, Address),
     Emit(Address, LogData, LogTopics),
-    AccessAccount(Address),
-    AccessStorage(Address, StorageKey),
     Jump,
 
     Call(CallParams),
