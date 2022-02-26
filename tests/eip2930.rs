@@ -6,7 +6,7 @@ use evmstar::host::stateful::{
     StatefulHost,
 };
 use evmstar::executor::{
-    callstack::CallContext,
+    callstack::CallScope,
     executor::Executor,
 };
 #[allow(unused_imports)]
@@ -60,7 +60,7 @@ fn test_eip2930_nocode() {
     {
         let host = StatefulHost::new_with(get_default_context());
 
-        let context = CallContext::default();
+        let context = CallScope::default();
         let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
         
         let mut access_list = AccessList::default();
@@ -74,7 +74,7 @@ fn test_eip2930_nocode() {
     {
         let host = StatefulHost::new_with(get_default_context());
 
-        let context = CallContext::default();
+        let context = CallScope::default();
         let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
         
         let mut access_list = AccessList::default();
@@ -101,7 +101,7 @@ fn test_eip2930_nocode_storage() {
         access_list.add_account(address_1());
         access_list.add_storage(address_0(), U256::from(0));
     
-        let context = CallContext::default();
+        let context = CallScope::default();
         let output = executor.execute_with_access_list(context, access_list);
     
         assert_eq!(StatusCode::Success, output.status_code);
@@ -119,7 +119,7 @@ fn test_eip2930_nocode_storage() {
         access_list.add_storage(address_0(), U256::from(0));
         access_list.add_storage(address_2(), U256::from(0));
     
-        let context = CallContext::default();
+        let context = CallScope::default();
         let output = executor.execute_with_access_list(context, access_list);
     
         assert_eq!(StatusCode::Success, output.status_code);
@@ -162,7 +162,7 @@ fn test_eip2930() {
         .append(OpCode::EXTCODESIZE) // cold
         ;
 
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.to = address_default();
     context.code = code.clone();
 
@@ -209,7 +209,7 @@ fn test_eip2930_sstore() {
         .append(OpCode::SSTORE)  // cold
         ;
     
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.to = address_default();
     context.code = code.clone();
 

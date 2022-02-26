@@ -5,7 +5,7 @@ use evmstar::host::stateful::{
     StatefulHost,
 };
 use evmstar::executor::{
-    callstack::CallContext,
+    callstack::CallScope,
     executor::Executor,
 };
 #[allow(unused_imports)]
@@ -49,7 +49,7 @@ fn test_eip2200_1(){
 
     let mut builder = Code::builder();
     let code = builder.append("60006000556000600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -70,7 +70,7 @@ fn test_eip2200_2(){
 
     let mut builder = Code::builder();
     let code = builder.append("60006000556001600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -91,7 +91,7 @@ fn test_eip2200_3(){
 
     let mut builder = Code::builder();
     let code = builder.append("60016000556000600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -112,7 +112,7 @@ fn test_eip2200_4(){
 
     let mut builder = Code::builder();
     let code = builder.append("60016000556002600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -133,7 +133,7 @@ fn test_eip2200_5(){
 
     let mut builder = Code::builder();
     let code = builder.append("60016000556001600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -154,7 +154,7 @@ fn test_eip2200_6(){
 
     let mut builder = Code::builder();
     let code = builder.append("60006000556000600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -175,7 +175,7 @@ fn test_eip2200_7(){
 
     let mut builder = Code::builder();
     let code = builder.append("60006000556001600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -196,7 +196,7 @@ fn test_eip2200_8(){
 
     let mut builder = Code::builder();
     let code = builder.append("60006000556002600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -217,7 +217,7 @@ fn test_eip2200_9(){
 
     let mut builder = Code::builder();
     let code = builder.append("60026000556000600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -238,7 +238,7 @@ fn test_eip2200_10(){
 
     let mut builder = Code::builder();
     let code = builder.append("60026000556003600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -259,7 +259,7 @@ fn test_eip2200_11(){
 
     let mut builder = Code::builder();
     let code = builder.append("60026000556001600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -280,7 +280,7 @@ fn test_eip2200_12(){
 
     let mut builder = Code::builder();
     let code = builder.append("60026000556002600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -301,7 +301,7 @@ fn test_eip2200_13(){
 
     let mut builder = Code::builder();
     let code = builder.append("60016000556000600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -322,7 +322,7 @@ fn test_eip2200_14(){
 
     let mut builder = Code::builder();
     let code = builder.append("60016000556002600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -343,7 +343,7 @@ fn test_eip2200_15(){
 
     let mut builder = Code::builder();
     let code = builder.append("60016000556001600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -364,7 +364,7 @@ fn test_eip2200_16(){
 
     let mut builder = Code::builder();
     let code = builder.append("600160005560006000556001600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -385,7 +385,7 @@ fn test_eip2200_17(){
 
     let mut builder = Code::builder();
     let code = builder.append("600060005560016000556000600055");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
