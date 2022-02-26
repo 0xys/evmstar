@@ -153,7 +153,11 @@ impl Executor {
 
         let mut resume = Resume::Init;
         loop {
-            let interrupt = self.interpreter.resume_interpret(resume, &mut scope, &mut exec_context, &mut self.host);
+            let interrupt = {
+                let mut current_scope = self.callstack.peek().borrow_mut(); // current scope is top of the callstack.
+                let interrupt = self.interpreter.resume_interpret(resume, &mut current_scope, &mut exec_context, &mut self.host);
+                interrupt
+            };
             
             let interrupt = match interrupt {
                 Ok(i) => i,
