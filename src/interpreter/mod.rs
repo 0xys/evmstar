@@ -7,11 +7,6 @@ use ethereum_types::{
 };
 use bytes::Bytes;
 
-use crate::model::evmc::{
-    AccessStatus,
-    StorageStatus,
-};
-
 pub type StorageKey = U256;
 pub type StorageValue = U256;
 pub type LogData = Vec<u8>;
@@ -20,8 +15,6 @@ pub type LogTopics = Vec<U256>;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Interrupt {
     AccountExists(Address),
-    GetStorage(Address, StorageKey),
-    SetStorage(Address, StorageKey, StorageValue),
     CopyCode(Address, usize),
     SelfDestruct(Address, Address),
     Emit(Address, LogData, LogTopics),
@@ -38,8 +31,6 @@ pub enum Interrupt {
 
 pub enum Resume {
     Init,
-    GetStorage(StorageValue, AccessStatus),
-    SetStorage(StorageValue, AccessStatus, StorageStatus),
     Returned(bool),
     Unknown,
 }

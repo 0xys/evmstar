@@ -228,26 +228,6 @@ impl Executor {
 
     fn handle_interrupt(&mut self, interrupt: &Interrupt) -> Resume {
         match interrupt {
-            Interrupt::GetStorage(address, key) => {
-                let access_status = if self.revision >= Revision::Berlin {
-                    self.host.access_storage(*address, *key)
-                }else{
-                    //  pre-berlin is always warm
-                    AccessStatus::Warm
-                };
-                let value = self.host.get_storage(*address, *key);
-                Resume::GetStorage(value, access_status)
-            },
-            Interrupt::SetStorage(address, key, new_value) => {
-                let access_status = if self.revision >= Revision::Berlin {
-                    self.host.access_storage(*address, *key)
-                }else{
-                    //  pre-berlin is always warm
-                    AccessStatus::Warm
-                };
-                let storage_status = self.host.set_storage(*address, *key, *new_value);
-                Resume::SetStorage(*new_value, access_status, storage_status)
-            },
             Interrupt::Call(_) => {
                 Resume::Init
             },

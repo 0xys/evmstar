@@ -129,30 +129,6 @@ impl Interpreter {
         
         match resume {
             Resume::Init => (),
-            Resume::GetStorage(value, access_status) => {
-                stack.push_unchecked(value);
-
-                // calculate dynamic gas
-                let gas =
-                    if exec_context.revision >= Revision::Berlin {
-                        match access_status {
-                            AccessStatus::Warm => 100,
-                            AccessStatus::Cold => 2100,
-                        }
-                    }else{
-                        match exec_context.revision {
-                            Revision::Frontier | Revision::Homestead => 50,
-                            Revision::Istanbul => 800,
-                            _ => 200
-                        }
-                    };
-                Self::consume_constant_gas(&mut call_context.gas_left, gas)?;
-            },
-            Resume::SetStorage(new_value, access_status, storage_status) => {
-                exec_context.refund_counter += calc_sstore_gas_refund(new_value, exec_context.revision, storage_status);
-                let gas = calc_sstore_gas_cost(new_value, exec_context.revision, access_status, storage_status);
-                Self::consume_constant_gas(&mut call_context.gas_left, gas)?;
-            },
             Resume::Returned(success) => {
                 stack.push_unchecked(if success { U256::one() } else { U256::zero() });
             },
@@ -786,7 +762,33 @@ impl Interpreter {
             OpCode::SLOAD => {
                 // static gas cost is 0. dynamic gas cost is deducted on resume.
                 let key = stack.pop()?;
-                Ok(Some(Interrupt::GetStorage(context.to, key)))
+
+                let access_status = if exec_context.revision >= Revision::Berlin {
+                    host.access_storage(context.to, key)
+                }else{
+                    //  pre-berlin is always warm
+                    AccessStatus::Warm
+                };
+                let value = host.get_storage(context.to, key);
+                stack.push_unchecked(value);
+
+                // calculate dynamic gas
+                let gas =
+                    if exec_context.revision >= Revision::Berlin {
+                        match access_status {
+                            AccessStatus::Warm => 100,
+                            AccessStatus::Cold => 2100,
+                        }
+                    }else{
+                        match exec_context.revision {
+                            Revision::Frontier | Revision::Homestead => 50,
+                            Revision::Istanbul => 800,
+                            _ => 200
+                        }
+                    };
+                Self::consume_constant_gas(&mut context.gas_left, gas)?;
+
+                Ok(None)
             },
             OpCode::SSTORE => {
                 // https://eips.ethereum.org/EIPS/eip-214
@@ -805,8 +807,21 @@ impl Interpreter {
 
                 // static gas cost is 0. dynamic gas cost is deducted on resume.
                 let key = stack.pop()?;
-                let value = stack.pop()?;
-                Ok(Some(Interrupt::SetStorage(context.to, key, value)))
+                let new_value = stack.pop()?;
+
+                let access_status = if exec_context.revision >= Revision::Berlin {
+                    host.access_storage(context.to, key)
+                }else{
+                    //  pre-berlin is always warm
+                    AccessStatus::Warm
+                };
+                let storage_status = host.set_storage(context.to, key, new_value);
+
+                exec_context.refund_counter += calc_sstore_gas_refund(new_value, exec_context.revision, storage_status);
+                let gas = calc_sstore_gas_cost(new_value, exec_context.revision, access_status, storage_status);
+                Self::consume_constant_gas(&mut context.gas_left, gas)?;
+
+                Ok(None)
             },
             OpCode::JUMP => {
                 Self::consume_constant_gas(&mut context.gas_left, 8)?;
