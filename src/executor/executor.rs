@@ -158,7 +158,7 @@ impl Executor {
             let interrupt = match interrupt {
                 Ok(i) => i,
                 Err(failure_kind) => {
-                    let src = match self.callstack.pop() {
+                    let child = match self.callstack.pop() {
                         None => panic!("pop from empty callstack is not allowed."),
                         Some(c) => c,
                     };
@@ -169,14 +169,14 @@ impl Executor {
                         }
                     }
                     
-                    let dest = self.callstack.peek();
-                    let mut dest = dest.borrow_mut();
+                    let parent = self.callstack.peek();
+                    let mut parent = parent.borrow_mut();
 
-                    let mut src = src.borrow_mut();
+                    let mut child = child.borrow_mut();
                     if failure_kind != FailureKind::Revert {
-                        src.gas_left = 0;   // empty remaining gas unless it's Revert
+                        child.gas_left = 0;   // empty remaining gas unless it's Revert
                     }
-                    dest.gas_left += src.gas_left;  // refund unused gas
+                    parent.gas_left += child.gas_left;  // refund unused gas
 
                     resume = Resume::Returned(FAILED);
                     continue;
