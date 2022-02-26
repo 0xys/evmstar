@@ -75,7 +75,7 @@ impl Interpreter {
         loop {
             if self.trace {
                 let gas_consumed_by_current = old_gas_left - scope.gas_left;
-                let gas_consumed_sofar = i64::max_value() - scope.gas_left;
+                let gas_consumed_sofar = scope.gas_limit - scope.gas_left;
                 println!("{}, {}", gas_consumed_by_current, gas_consumed_sofar);
             }
             old_gas_left = scope.gas_left;

@@ -6,10 +6,12 @@ use std::{
 };
 
 use crate::host::Host;
+use crate::model::code::Code;
 use crate::model::evmc::{
     Message, Output, TxContext, AccessStatus, StatusCode, StorageStatus, StorageStatusKind,
 };
 use hex_literal::hex;
+use hex::decode;
 
 /// LOG record.
 #[derive(Clone, Debug, PartialEq)]
@@ -141,6 +143,23 @@ impl StatefulHost {
     }
     pub fn debug_set_storage_as_warm(&mut self) {
         self.is_always_warm = true;
+    }
+    pub fn debug_deploy_contract(&mut self, address_hex: &str, code: Code, balance: U256) {
+        let mut dst = [0u8; 20];
+        let hex = decode(address_hex).unwrap();
+        for i in 0..hex.len() {
+            dst[hex.len() - 1 - i] = hex[hex.len() - 1 - i];
+        }
+
+        let account = Account {
+            balance,
+            code: code.0.into(),
+            code_hash: U256::from(0x123456),
+            nonce: 0,
+            storage: Default::default(),
+        };
+        let address = Address::from_slice(&dst);
+        self.accounts.insert(address, account);
     }
 }
 

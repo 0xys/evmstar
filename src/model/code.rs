@@ -1,4 +1,7 @@
 use bytes::Bytes;
+use ethereum_types::{
+    U256, Address,
+};
 use hex::decode;
 use super::opcode::OpCode;
 
@@ -76,6 +79,13 @@ impl Append<&[u8]> for Code {
         self
     }
 }
+impl Append<Vec<u8>> for Code {
+    fn append<'a>(&'a mut self, data: Vec<u8>) -> &'a mut Self {
+        let mut data = data.clone();
+        self.0.append(&mut data);
+        self
+    }
+}
 impl Append<u8> for Code {
     fn append<'a>(&'a mut self, data: u8) -> &'a mut Self {
         self.0.append(&mut Vec::from([data]));
@@ -85,6 +95,22 @@ impl Append<u8> for Code {
 impl Append<OpCode> for Code {
     fn append<'a>(&'a mut self, opcode: OpCode) -> &'a mut Self {
         self.0.push(opcode.to_u8());
+        self
+    }
+}
+impl Append<U256> for Code {
+    fn append<'a>(&'a mut self, value: U256) -> &'a mut Self {
+        let mut dst = [0u8; 32];
+        value.to_big_endian(&mut dst);
+        let data = Vec::from(dst);
+        self.append(data);
+        self
+    }
+}
+impl Append<Address> for Code {
+    fn append<'a>(&'a mut self, address: Address) -> &'a mut Self {
+        let data = Vec::from(address.0);
+        self.append(data);
         self
     }
 }

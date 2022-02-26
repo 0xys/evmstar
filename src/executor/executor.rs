@@ -202,7 +202,7 @@ impl Executor {
                     let mut parent = parent.borrow_mut();
 
                     parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
-                    parent.gas_left += child.gas_left;  // refund unused gas
+                    parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
 
                     resume = Resume::Returned(SUCCESS);
                     continue;
