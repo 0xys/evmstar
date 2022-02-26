@@ -563,7 +563,7 @@ impl Interpreter {
             OpCode::GASPRICE => {
                 Self::consume_constant_gas(&mut scope.gas_left, 2)?;
                 let tx_context = host.get_tx_context();
-                self.handle_resume_context(ContextKind::GasPrice, tx_context, stack)?;
+                self.handle_context(ContextKind::GasPrice, tx_context, stack)?;
                 Ok(None)
             },
             OpCode::EXTCODESIZE => {
@@ -676,31 +676,31 @@ impl Interpreter {
             OpCode::COINBASE => {
                 Self::consume_constant_gas(&mut scope.gas_left, 2)?;
                 let tx_context = host.get_tx_context();
-                self.handle_resume_context(ContextKind::Coinbase, tx_context, stack)?;
+                self.handle_context(ContextKind::Coinbase, tx_context, stack)?;
                 Ok(None)
             },
             OpCode::TIMESTAMP => {
                 Self::consume_constant_gas(&mut scope.gas_left, 2)?;
                 let tx_context = host.get_tx_context();
-                self.handle_resume_context(ContextKind::Timestamp, tx_context, stack)?;
+                self.handle_context(ContextKind::Timestamp, tx_context, stack)?;
                 Ok(None)
             },
             OpCode::NUMBER => {
                 Self::consume_constant_gas(&mut scope.gas_left, 2)?;
                 let tx_context = host.get_tx_context();
-                self.handle_resume_context(ContextKind::Number, tx_context, stack)?;
+                self.handle_context(ContextKind::Number, tx_context, stack)?;
                 Ok(None)
             },
             OpCode::DIFFICULTY => {
                 Self::consume_constant_gas(&mut scope.gas_left, 2)?;
                 let tx_context = host.get_tx_context();
-                self.handle_resume_context(ContextKind::Difficulty, tx_context, stack)?;
+                self.handle_context(ContextKind::Difficulty, tx_context, stack)?;
                 Ok(None)
             },
             OpCode::GASLIMIT => {
                 Self::consume_constant_gas(&mut scope.gas_left, 2)?;
                 let tx_context = host.get_tx_context();
-                self.handle_resume_context(ContextKind::GasLimit, tx_context, stack)?;
+                self.handle_context(ContextKind::GasLimit, tx_context, stack)?;
                 Ok(None)
             },
             OpCode::CHAINID => {
@@ -710,7 +710,7 @@ impl Interpreter {
                 }
                 Self::consume_constant_gas(&mut scope.gas_left, 2)?;
                 let tx_context = host.get_tx_context();
-                self.handle_resume_context(ContextKind::ChainId, tx_context, stack)?;
+                self.handle_context(ContextKind::ChainId, tx_context, stack)?;
                 Ok(None)
             },
             OpCode::SELFBALANCE => {
@@ -730,7 +730,7 @@ impl Interpreter {
                 }
                 Self::consume_constant_gas(&mut scope.gas_left, 2)?;
                 let tx_context = host.get_tx_context();
-                self.handle_resume_context(ContextKind::BaseFee, tx_context, stack)?;
+                self.handle_context(ContextKind::BaseFee, tx_context, stack)?;
                 Ok(None)
             }
             OpCode::POP => {
@@ -1079,7 +1079,7 @@ impl Interpreter {
         Ok(())
     }
 
-    fn handle_resume_context(&self, kind: ContextKind, context: TxContext, stack: &mut Stack) -> Result<(), FailureKind> {
+    fn handle_context(&self, kind: ContextKind, context: TxContext, stack: &mut Stack) -> Result<(), FailureKind> {
         match kind {
             ContextKind::Coinbase => {
                 let coinbase = address_to_u256(context.coinbase);
