@@ -6,7 +6,7 @@ use crate::executor::callstack::{
     CallStack, CallContext, ExecutionContext
 };
 use crate::interpreter::{CallParams, CallKind};
-use crate::interpreter::stack::Calldata;
+use crate::interpreter::stack::{Calldata};
 use crate::interpreter::{
     Interrupt,
     interpreter::Interpreter,
@@ -22,7 +22,7 @@ use crate::model::{
 pub struct Executor {
     host: Box<dyn Host>,
     interpreter: Interpreter,
-    callstack: CallStack,
+    callstack: Box<CallStack>,
     revision: Revision,
 
     /// if true, gas cost outside of EVM opcode, such as intrinsic cost, calldata cost and access list cost,
@@ -37,7 +37,7 @@ impl Executor {
         Self {
             host: host,
             interpreter: Interpreter::default(),
-            callstack: CallStack::default(),
+            callstack: Box::new(CallStack::default()),
             revision: Revision::Shanghai,
             is_execution_cost_on: false,
         }
@@ -46,7 +46,7 @@ impl Executor {
         Self {
             host: host,
             interpreter: Interpreter::new_with_tracing(),
-            callstack: CallStack::default(),
+            callstack: Box::new(CallStack::default()),
             revision: Revision::Shanghai,
             is_execution_cost_on: false,
         }
@@ -58,7 +58,7 @@ impl Executor {
                 true => Interpreter::new_with_tracing(),
                 false => Interpreter::default()
             },
-            callstack: CallStack::default(),
+            callstack: Box::new(CallStack::default()),
             revision: revision,
             is_execution_cost_on: false,
         }
@@ -72,7 +72,7 @@ impl Executor {
                 true => Interpreter::new_with_tracing(),
                 false => Interpreter::default()
             },
-            callstack: CallStack::default(),
+            callstack: Box::new(CallStack::default()),
             revision: revision,
             is_execution_cost_on: true,
         }
@@ -114,7 +114,8 @@ impl Executor {
     pub fn execute_raw_with(&mut self, mut context: CallContext) -> Output {
         let mut exec_context = ExecutionContext {
             refund_counter: 0,
-            revision: self.revision
+            revision: self.revision,
+            num_of_selfdestruct: 0,
         };
 
         if self.revision >= Revision::Spurious {
@@ -146,6 +147,8 @@ impl Executor {
             }
         }
 
+        self.callstack.push(context.clone()).unwrap();
+
         let mut resume = Resume::Init;
         loop {
             let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut exec_context);
@@ -160,18 +163,26 @@ impl Executor {
 
             match interrupt {
                 Interrupt::Return(gas_left, data) => {
-                    "TODO"
-                    match self.callstack.pop() {
-                        None => {
-                            return Output::new_failure(FailureKind::CallDepthExceeded, 0);
-                        },
-                        Some(context) => context,
+                    let src = match self.callstack.pop() {
+                        None => panic!("pop from empty callstack is not allowed."),
+                        Some(c) => c,
                     };
-                    let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, context.num_of_selfdestruct, self.revision);
-                    return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
+                    let src = src.borrow_mut();
+                    if self.callstack.is_empty() {
+                        let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
+                        return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
+                    }
+                    let dest = self.callstack.peek();
+                    let mut dest = dest.borrow_mut();
+
+                    dest.memory.set_range(src.ret_offset, &data[..src.ret_size]);
+                    dest.gas_left += src.gas_left;  // refund unused gas
+
+                    resume = Resume::Returned;
+                    continue;
                 },
                 Interrupt::Stop(gas_left) => {
-                    let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, context.num_of_selfdestruct, self.revision);
+                    let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
                     return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, Bytes::default());
                 },
                 Interrupt::Call(params) => {
@@ -271,12 +282,16 @@ impl Executor {
     }
 
     fn push_new_call_context(&mut self, params: &CallParams) -> Result<(), FailureKind> {
-        let mut current_context = self.callstack.peek();
-        let (dynamic_cost, new_context) = self.create_call_context(&current_context, params);
-    
-        if !consume_gas(&mut current_context.gas_left, dynamic_cost) {
-            return Err(FailureKind::OutOfGas)
-        }
+        let new_context = {
+            let current_context = self.callstack.peek();
+            let mut current_context = current_context.borrow_mut();
+            let (dynamic_cost, new_context) = self.create_call_context(&current_context, params);
+        
+            if !consume_gas(&mut current_context.gas_left, dynamic_cost) {
+                return Err(FailureKind::OutOfGas)
+            }
+            new_context
+        };
                 
         self.callstack.push(new_context)?;
 
@@ -307,18 +322,21 @@ impl Executor {
                 context.gas_limit = gas;
                 context.gas_left = gas;
 
+                context.ret_offset = params.ret_offset;
+                context.ret_size = params.ret_size;
+
                 (0, context)
             },
             CallKind::CallCode => {
-                let mut context = CallContext::default();
+                let context = CallContext::default();
                 (0, context)
             },
             CallKind::StaticCall => {
-                let mut context = CallContext::default();
+                let context = CallContext::default();
                 (0, context)
             },
             CallKind::DelegateCall => {
-                let mut context = CallContext::default();
+                let context = CallContext::default();
                 (0, context)
             },
         }

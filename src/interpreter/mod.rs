@@ -56,6 +56,7 @@ pub enum Resume {
     GetExtCodeSize(U256, AccessStatus),
     GetExtCode(Bytes, AccessStatus, usize),
     GetExtCodeHash(U256, AccessStatus),
+    Returned,
     Unknown,
 }
 

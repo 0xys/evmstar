@@ -23,7 +23,7 @@ use crate::interpreter::{
     utils::{
         exp,
         memory::{
-            mload, mstore, mstore8, ret, mstore_data,
+            mload, mstore, mstore8, ret, mstore_data, resize_memory,
         },
         gasometer::{calc_sstore_gas_cost, calc_sstore_gas_refund},
     },
@@ -888,23 +888,39 @@ impl Interpreter {
             // },
             OpCode::CALL => {
                 let gas = context.stack.pop()?;
+                let gas = gas.as_u32() as i64;
                 let address = context.stack.pop()?;
                 let address = u256_to_address(address);
                 let value = context.stack.pop()?;
                 let args_offset = context.stack.pop()?;
+                let args_offset = args_offset.as_usize();
                 let args_size = context.stack.pop()?;
+                let args_size = args_size.as_usize();
                 let ret_offset = context.stack.pop()?;
+                let ret_offset = ret_offset.as_usize();
                 let ret_size = context.stack.pop()?;
+                let ret_size = ret_size.as_usize();
                 let params = CallParams {
                     kind: CallKind::Plain,
-                    gas: gas.as_u32() as i64,
+                    gas,
                     address,
                     value,
-                    args_offset: args_offset.as_usize(),
-                    args_size: args_size.as_usize(),
-                    ret_offset: ret_offset.as_usize(),
-                    ret_size: ret_size.as_usize(),
+                    args_offset,
+                    args_size,
+                    ret_offset,
+                    ret_size,
                 };
+
+                let cost_args = resize_memory(args_offset, args_size, &mut context.memory, context.gas_left)?;
+                let cost_ret = resize_memory(ret_offset, ret_size, &mut context.memory, context.gas_left)?;
+                let positive_value_cost = 
+                    if value.is_zero() {
+                        0
+                    }else{
+                        9000i64
+                    };
+
+                Self::consume_constant_gas(&mut context.gas_left, gas + cost_args + cost_ret + positive_value_cost)?;
 
                 Ok(Some(Interrupt::Call(params)))
             },

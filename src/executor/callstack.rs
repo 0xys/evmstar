@@ -1,5 +1,6 @@
+use std::cell::{RefCell};
+
 use ethereum_types::{Address, U256};
-use arrayvec::ArrayVec;
 
 use crate::model::evmc::FailureKind;
 use crate::model::{
@@ -14,6 +15,7 @@ use crate::interpreter::{
 pub struct ExecutionContext {
     pub refund_counter: i64,
     pub revision: Revision,
+    pub num_of_selfdestruct: i64,
 }
 
 #[derive(Clone, Debug)]
@@ -31,7 +33,8 @@ pub struct CallContext {
     pub is_staticcall: bool,
     pub gas_limit: i64,
     pub gas_left: i64,
-    pub num_of_selfdestruct: i64,
+    pub ret_offset: usize,
+    pub ret_size: usize,
 }
 impl Default for CallContext {
     fn default() -> Self {
@@ -49,7 +52,8 @@ impl Default for CallContext {
             is_staticcall: false,
             gas_limit: i64::max_value(),
             gas_left: i64::max_value(),
-            num_of_selfdestruct: 0,
+            ret_offset: 0,
+            ret_size: 0,
         }
     }
 }
@@ -59,7 +63,7 @@ const SIZE: usize = 1024;
 
 /// evm execution call stack
 #[derive(Clone, Debug, Default)]
-pub struct CallStack(pub ArrayVec<Box<CallContext>, SIZE>);
+pub struct CallStack(pub Vec<RefCell<CallContext>>);
 
 impl CallStack {
 
@@ -75,23 +79,18 @@ impl CallStack {
         if self.0.len() >= SIZE {
             return Err(FailureKind::CallDepthExceeded);
         }
-        unsafe {
-            self.0.push_unchecked(Box::new(value));
-        }
+        self.0.push(RefCell::new(value));
         Ok(())
     }
 
-    pub fn peek(&self) -> CallContext {
+    pub fn peek(&self) -> &RefCell<CallContext> {
         if self.is_empty() {
             panic!("call stack must not be empty");
         }
-        (*self.0[self.0.len() - 1]).clone()
+        self.0.get(self.0.len() - 1).unwrap()
     }
 
-    pub fn pop(&mut self) -> Option<CallContext> {
-        if let Some(top) = self.0.pop() {
-            return Some(*top);
-        }
-        None
+    pub fn pop(&mut self) -> Option<RefCell<CallContext>> {
+        self.0.pop()
     }
 }
