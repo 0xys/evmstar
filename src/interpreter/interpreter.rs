@@ -129,25 +129,6 @@ impl Interpreter {
         
         match resume {
             Resume::Init => (),
-            Resume::GetExtCodeHash(hash, access_status) => {
-                let gas =
-                    if exec_context.revision >= Revision::Berlin {
-                        match access_status {
-                            AccessStatus::Warm => 100,
-                            AccessStatus::Cold => 2600,
-                        }
-                    }else{
-                        match exec_context.revision {
-                            Revision::Constantinople | Revision::Petersburg => 400,
-                            Revision::Istanbul => 700,
-                            _ => {
-                                return Err(FailureKind::InvalidInstruction);
-                            }
-                        }
-                    };                
-                Self::consume_constant_gas(&mut call_context.gas_left, gas)?;
-                stack.push_unchecked(hash);
-            },
             Resume::GetStorage(value, access_status) => {
                 stack.push_unchecked(value);
 
@@ -171,40 +152,6 @@ impl Interpreter {
                 exec_context.refund_counter += calc_sstore_gas_refund(new_value, exec_context.revision, storage_status);
                 let gas = calc_sstore_gas_cost(new_value, exec_context.revision, access_status, storage_status);
                 Self::consume_constant_gas(&mut call_context.gas_left, gas)?;
-            },
-            Resume::GetExtCodeSize(size, access_status) => {
-                stack.push_unchecked(size);
-                let cost =
-                    if exec_context.revision >= Revision::Berlin {
-                        match access_status {
-                            AccessStatus::Warm => 100,
-                            AccessStatus::Cold => 2600,
-                        }
-                    }else{
-                        if exec_context.revision >= Revision::Tangerine {
-                            700
-                        }else{
-                            20
-                        }
-                    };
-                Self::consume_constant_gas(&mut call_context.gas_left, cost)?;
-            },
-            Resume::GetExtCode(code, access_status, dest_offset) => {
-                let memory_cost = mstore_data(U256::from(dest_offset), memory, &code, call_context.gas_left)?;
-                let account_access_cost = 
-                    if exec_context.revision >= Revision::Berlin {
-                        match access_status {
-                            AccessStatus::Warm => 100,
-                            AccessStatus::Cold => 2600,
-                        }
-                    }else{
-                        if exec_context.revision >= Revision::Tangerine {
-                            700
-                        }else{
-                            20
-                        }
-                    };
-                Self::consume_constant_gas(&mut call_context.gas_left, account_access_cost + memory_cost)?;
             },
             Resume::Returned(success) => {
                 stack.push_unchecked(if success { U256::one() } else { U256::zero() });
@@ -646,7 +593,28 @@ impl Interpreter {
             OpCode::EXTCODESIZE => {
                 let address = stack.pop()?;
                 let address = u256_to_address(address);
-                Ok(Some(Interrupt::GetExtCodeSize(address)))
+                let access_status = if exec_context.revision >= Revision::Berlin {
+                    host.access_account(address)
+                }else{
+                    AccessStatus::Warm
+                };
+                let size = host.get_code_size(address);
+                stack.push_unchecked(size);
+                let cost =
+                    if exec_context.revision >= Revision::Berlin {
+                        match access_status {
+                            AccessStatus::Warm => 100,
+                            AccessStatus::Cold => 2600,
+                        }
+                    }else{
+                        if exec_context.revision >= Revision::Tangerine {
+                            700
+                        }else{
+                            20
+                        }
+                    };
+                Self::consume_constant_gas(&mut context.gas_left, cost)?;
+                Ok(None)
             },
             OpCode::EXTCODECOPY => {
                 let address = stack.pop()?;
@@ -654,7 +622,29 @@ impl Interpreter {
                 let dest_offset = stack.pop()?;
                 let offset = stack.pop()?;
                 let size = stack.pop()?;
-                Ok(Some(Interrupt::GetExtCode(address, dest_offset.as_usize(), offset.as_usize(), size.as_usize())))
+                let access_status = if exec_context.revision >= Revision::Berlin {
+                    host.access_account(address)
+                }else{
+                    AccessStatus::Warm
+                };
+                let code = host.get_code(address, offset.as_usize(), size.as_usize());
+
+                let memory_cost = mstore_data(U256::from(dest_offset), memory, &code, context.gas_left)?;
+                let account_access_cost = 
+                    if exec_context.revision >= Revision::Berlin {
+                        match access_status {
+                            AccessStatus::Warm => 100,
+                            AccessStatus::Cold => 2600,
+                        }
+                    }else{
+                        if exec_context.revision >= Revision::Tangerine {
+                            700
+                        }else{
+                            20
+                        }
+                    };
+                Self::consume_constant_gas(&mut context.gas_left, account_access_cost + memory_cost)?;
+                Ok(None)
             },
             // OpCode::RETURNDATASIZE => {
             //     // EIP-211: https://eips.ethereum.org/EIPS/eip-211
@@ -677,7 +667,28 @@ impl Interpreter {
                 }
                 let address = stack.pop()?;
                 let address = u256_to_address(address);
-                Ok(Some(Interrupt::GetExtCodeHash(address)))
+
+                let access_status = host.access_account(address);
+                let hash = host.get_code_hash(address);
+
+                let gas =
+                    if exec_context.revision >= Revision::Berlin {
+                        match access_status {
+                            AccessStatus::Warm => 100,
+                            AccessStatus::Cold => 2600,
+                        }
+                    }else{
+                        match exec_context.revision {
+                            Revision::Constantinople | Revision::Petersburg => 400,
+                            Revision::Istanbul => 700,
+                            _ => {
+                                return Err(FailureKind::InvalidInstruction);
+                            }
+                        }
+                    };                
+                Self::consume_constant_gas(&mut context.gas_left, gas)?;
+                stack.push_unchecked(hash);
+                Ok(None)
             },
             OpCode::BLOCKHASH => {
                 Self::consume_constant_gas(&mut context.gas_left, 20)?;

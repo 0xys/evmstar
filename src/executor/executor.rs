@@ -228,29 +228,6 @@ impl Executor {
 
     fn handle_interrupt(&mut self, interrupt: &Interrupt) -> Resume {
         match interrupt {
-            Interrupt::GetExtCodeSize(address) => {
-                let access_status = if self.revision >= Revision::Berlin {
-                    self.host.access_account(*address)
-                }else{
-                    AccessStatus::Warm
-                };
-                let size = self.host.get_code_size(*address);
-                Resume::GetExtCodeSize(size, access_status)
-            },
-            Interrupt::GetExtCode(address, dest_offset, offset, size) => {
-                let access_status = if self.revision >= Revision::Berlin {
-                    self.host.access_account(*address)
-                }else{
-                    AccessStatus::Warm
-                };
-                let code = self.host.get_code(*address, *offset, *size);
-                Resume::GetExtCode(code, access_status, *dest_offset)
-            },
-            Interrupt::GetExtCodeHash(address) => {
-                let access_status = self.host.access_account(*address);
-                let hash = self.host.get_code_hash(*address);
-                Resume::GetExtCodeHash(hash, access_status)
-            },
             Interrupt::GetStorage(address, key) => {
                 let access_status = if self.revision >= Revision::Berlin {
                     self.host.access_storage(*address, *key)
