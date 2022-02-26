@@ -206,7 +206,7 @@ impl Executor {
                     return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, Bytes::default());
                 },
                 Interrupt::Call(params) => {
-                    match self.push_new_call_context(&params) {
+                    match self.push_child_scope(&params) {
                         Err(kind) => {
                             return Output::new_failure(kind, 0);
                         },
@@ -237,33 +237,33 @@ impl Executor {
         }
     }
 
-    fn push_new_call_context(&mut self, params: &CallParams) -> Result<(), FailureKind> {
-        let new_context = {
-            let current_context = self.callstack.peek();
-            let mut current_context = current_context.borrow_mut();
-            let (dynamic_cost, new_context) = self.create_call_context(&current_context, params);
+    fn push_child_scope(&mut self, params: &CallParams) -> Result<(), FailureKind> {
+        let child = {
+            let parent = self.callstack.peek();
+            let mut parent = parent.borrow_mut();
+            let (dynamic_cost, child) = self.create_child_scope(&parent, params);
         
-            if !consume_gas(&mut current_context.gas_left, dynamic_cost) {
+            if !consume_gas(&mut parent.gas_left, dynamic_cost) {
                 return Err(FailureKind::OutOfGas)
             }
-            new_context
+            child
         };
-                
-        self.callstack.push(new_context)?;
+        
+        self.callstack.push(child)?;
 
         Ok(())
     }
 
-    fn create_call_context(&self, current: &CallScope, params: &CallParams) -> (i64, CallScope) {
+    fn create_child_scope(&self, parent: &CallScope, params: &CallParams) -> (i64, CallScope) {
         match params.kind {
             CallKind::Plain => {
                 let mut scope = CallScope::default();
-                scope.origin = current.origin;
-                scope.caller = current.code_address;
+                scope.origin = parent.origin;
+                scope.caller = parent.code_address;
                 scope.to = params.address;
                 scope.code_address = params.address;
 
-                scope.calldata = Calldata::default(); // TODO
+                scope.calldata = parent.memory.get_range(params.args_offset, params.args_size).into();
 
                 let code_size = self.host.get_code_size(params.address);
                 scope.code = self.host.get_code(params.address, 0, code_size.as_usize()).into();
@@ -280,6 +280,8 @@ impl Executor {
 
                 scope.ret_offset = params.ret_offset;
                 scope.ret_size = params.ret_size;
+
+                scope.is_staticcall = parent.is_staticcall;    // child succeeds `is_static` flag
 
                 (0, scope)
             },
