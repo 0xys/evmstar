@@ -31,6 +31,8 @@ pub struct Executor {
 }
 
 const MAX_CODE_SIZE: usize = 0x6000;
+const SUCCESS: bool = true;
+const FAILED: bool = false;
 
 impl Executor {
     pub fn new(host: Box<dyn Host>) -> Self {
@@ -176,29 +178,29 @@ impl Executor {
                     }
                     dest.gas_left += src.gas_left;  // refund unused gas
 
-                    resume = Resume::Returned(false);
+                    resume = Resume::Returned(FAILED);
                     continue;
                 }
             };
 
             match interrupt {
                 Interrupt::Return(gas_left, data) => {
-                    let src = match self.callstack.pop() {
+                    let child = match self.callstack.pop() {
                         None => panic!("pop from empty callstack is not allowed."),
                         Some(c) => c,
                     };
-                    let src = src.borrow_mut();
+                    let child = child.borrow_mut();
                     if self.callstack.is_empty() {
                         let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
                         return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
                     }
-                    let dest = self.callstack.peek();
-                    let mut dest = dest.borrow_mut();
+                    let parent = self.callstack.peek();
+                    let mut parent = parent.borrow_mut();
 
-                    dest.memory.set_range(src.ret_offset, &data[..src.ret_size]);
-                    dest.gas_left += src.gas_left;  // refund unused gas
+                    parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
+                    parent.gas_left += child.gas_left;  // refund unused gas
 
-                    resume = Resume::Returned(true);
+                    resume = Resume::Returned(SUCCESS);
                     continue;
                 },
                 Interrupt::Stop(gas_left) => {
