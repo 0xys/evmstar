@@ -957,16 +957,56 @@ impl Interpreter {
                     ret_size,
                 };
 
-                let cost_args = resize_memory(args_offset, args_size, &mut scope.memory, scope.gas_left)?;
-                let cost_ret = resize_memory(ret_offset, ret_size, &mut scope.memory, scope.gas_left)?;
+                if !value.is_zero() && exec_context.revision >= Revision::Byzantium && scope.is_staticcall {
+                    return Err(FailureKind::StaticModeViolation);
+                }
+
+                let static_cost = 
+                    if exec_context.revision >= Revision::Berlin {
+                        0
+                    }else{
+                        if exec_context.revision <= Revision::Homestead {
+                            40
+                        }else{
+                            700
+                        }
+                    };
+
+                let args_cost = resize_memory(args_offset, args_size, &mut scope.memory, scope.gas_left)?;
+                let ret_cost = resize_memory(ret_offset, ret_size, &mut scope.memory, scope.gas_left)?;
                 let positive_value_cost = 
                     if value.is_zero() {
                         0
                     }else{
-                        9000i64
+                        9000
+                    };
+                
+                let value_to_empty_cost = 
+                    if host.account_exists(address){
+                        0
+                    }else{
+                        25000
+                    };
+                
+                let address_access_cost =
+                    if exec_context.revision >= Revision::Berlin {
+                        match host.access_account(address) {
+                            AccessStatus::Cold => 2600,
+                            AccessStatus::Warm => 100, 
+                        }
+                    }else{
+                        0
                     };
 
-                Self::consume_constant_gas(&mut scope.gas_left, gas + cost_args + cost_ret + positive_value_cost)?;
+                let caller_balance = host.get_balance(scope.caller);
+                if caller_balance < value {
+                    return Err(FailureKind::InsufficientBalance);
+                }
+                host.subtract_balance(scope.caller, value);
+                host.add_balance(address, value);
+                
+                let total_cost = static_cost + gas + args_cost + ret_cost + address_access_cost + positive_value_cost + value_to_empty_cost;
+                Self::consume_constant_gas(&mut scope.gas_left, total_cost)?;
 
                 Ok(Some(Interrupt::Call(params)))
             },
