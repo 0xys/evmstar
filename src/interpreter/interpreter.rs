@@ -129,13 +129,6 @@ impl Interpreter {
         
         match resume {
             Resume::Init => (),
-            Resume::SelfBalance(balance) => {
-                stack.push(balance)?;
-                Self::consume_constant_gas(&mut call_context.gas_left, 5)?;
-            },
-            Resume::Context(kind, context) => {
-                self.handle_resume_context(kind, &context, stack)?
-            },
             Resume::GetExtCodeHash(hash, access_status) => {
                 let gas =
                     if exec_context.revision >= Revision::Berlin {
@@ -153,9 +146,6 @@ impl Interpreter {
                         }
                     };                
                 Self::consume_constant_gas(&mut call_context.gas_left, gas)?;
-                stack.push_unchecked(hash);
-            },
-            Resume::Blockhash(hash) => {
                 stack.push_unchecked(hash);
             },
             Resume::GetStorage(value, access_status) => {
@@ -649,7 +639,9 @@ impl Interpreter {
             },
             OpCode::GASPRICE => {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
-                Ok(Some(Interrupt::Context(ContextKind::GasPrice)))
+                let tx_context = host.get_tx_context();
+                self.handle_resume_context(ContextKind::GasPrice, tx_context, stack)?;
+                Ok(None)
             },
             OpCode::EXTCODESIZE => {
                 let address = stack.pop()?;
@@ -690,27 +682,39 @@ impl Interpreter {
             OpCode::BLOCKHASH => {
                 Self::consume_constant_gas(&mut context.gas_left, 20)?;
                 let height = stack.pop()?;
-                Ok(Some(Interrupt::Blockhash(height.as_usize())))
+                let hash = host.get_blockhash(height.as_usize());
+                stack.push_unchecked(hash);
+                Ok(None)
             },
             OpCode::COINBASE => {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
-                Ok(Some(Interrupt::Context(ContextKind::Coinbase)))
+                let tx_context = host.get_tx_context();
+                self.handle_resume_context(ContextKind::Coinbase, tx_context, stack)?;
+                Ok(None)
             },
             OpCode::TIMESTAMP => {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
-                Ok(Some(Interrupt::Context(ContextKind::Timestamp)))
+                let tx_context = host.get_tx_context();
+                self.handle_resume_context(ContextKind::Timestamp, tx_context, stack)?;
+                Ok(None)
             },
             OpCode::NUMBER => {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
-                Ok(Some(Interrupt::Context(ContextKind::Number)))
+                let tx_context = host.get_tx_context();
+                self.handle_resume_context(ContextKind::Number, tx_context, stack)?;
+                Ok(None)
             },
             OpCode::DIFFICULTY => {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
-                Ok(Some(Interrupt::Context(ContextKind::Difficulty)))
+                let tx_context = host.get_tx_context();
+                self.handle_resume_context(ContextKind::Difficulty, tx_context, stack)?;
+                Ok(None)
             },
             OpCode::GASLIMIT => {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
-                Ok(Some(Interrupt::Context(ContextKind::GasLimit)))
+                let tx_context = host.get_tx_context();
+                self.handle_resume_context(ContextKind::GasLimit, tx_context, stack)?;
+                Ok(None)
             },
             OpCode::CHAINID => {
                 // EIP-1344: https://eips.ethereum.org/EIPS/eip-1344
@@ -718,14 +722,19 @@ impl Interpreter {
                     return Err(FailureKind::InvalidInstruction);
                 }
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
-                Ok(Some(Interrupt::Context(ContextKind::ChainId)))
+                let tx_context = host.get_tx_context();
+                self.handle_resume_context(ContextKind::ChainId, tx_context, stack)?;
+                Ok(None)
             },
             OpCode::SELFBALANCE => {
                 // EIP-1884: https://eips.ethereum.org/EIPS/eip-1884
                 if exec_context.revision < Revision::Istanbul {
                     return Err(FailureKind::InvalidInstruction);
                 }
-                Ok(Some(Interrupt::SelfBalance(context.code_address)))
+                let balance = host.get_balance(context.code_address);
+                stack.push(balance)?;
+                Self::consume_constant_gas(&mut context.gas_left, 5)?;
+                Ok(None)
             },
             OpCode::BASEFEE => {
                 // EIP-3198: https://eips.ethereum.org/EIPS/eip-3198
@@ -733,7 +742,9 @@ impl Interpreter {
                     return Err(FailureKind::InvalidInstruction);
                 }
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
-                Ok(Some(Interrupt::Context(ContextKind::BaseFee)))
+                let tx_context = host.get_tx_context();
+                self.handle_resume_context(ContextKind::BaseFee, tx_context, stack)?;
+                Ok(None)
             }
             OpCode::POP => {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;
@@ -1042,36 +1053,36 @@ impl Interpreter {
         Ok(())
     }
 
-    fn handle_resume_context(&self, kind: ContextKind, context: &TxContext, stack: &mut Stack) -> Result<(), FailureKind> {
+    fn handle_resume_context(&self, kind: ContextKind, context: TxContext, stack: &mut Stack) -> Result<(), FailureKind> {
         match kind {
             ContextKind::Coinbase => {
                 let coinbase = address_to_u256(context.coinbase);
-                stack.push(coinbase).map_err(|_| FailureKind::StackOverflow)?;
+                stack.push(coinbase)?;
             },
             ContextKind::Timestamp => {
                 let timestamp = U256::from(context.block_timestamp);
-                stack.push(timestamp).map_err(|_| FailureKind::StackOverflow)?;
+                stack.push(timestamp)?;
             },
             ContextKind::Number => {
                 let number = U256::from(context.block_number);
-                stack.push(number).map_err(|_| FailureKind::StackOverflow)?;
+                stack.push(number)?;
             },
             ContextKind::Difficulty => {
-                stack.push(context.difficulty).map_err(|_| FailureKind::StackOverflow)?;
+                stack.push(context.difficulty)?;
             },
             ContextKind::GasLimit => {
                 let gas_limit = U256::from(context.gas_limit);
-                stack.push(gas_limit).map_err(|_| FailureKind::StackOverflow)?;
+                stack.push(gas_limit)?;
             },
             ContextKind::GasPrice => {
                 let gas_price = U256::from(context.gas_price);
-                stack.push(gas_price).map_err(|_| FailureKind::StackOverflow)?;
+                stack.push(gas_price)?;
             },
             ContextKind::ChainId => {
-                stack.push(context.chain_id).map_err(|_| FailureKind::StackOverflow)?;
+                stack.push(context.chain_id)?;
             },
             ContextKind::BaseFee => {
-                stack.push(context.base_fee).map_err(|_| FailureKind::StackOverflow)?;
+                stack.push(context.base_fee)?;
             }
         };
 

@@ -8,7 +8,6 @@ use ethereum_types::{
 use bytes::Bytes;
 
 use crate::model::evmc::{
-    TxContext,
     AccessStatus,
     StorageStatus,
 };
@@ -21,7 +20,6 @@ pub type LogTopics = Vec<U256>;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Interrupt {
     AccountExists(Address),
-    SelfBalance(Address),
     GetStorage(Address, StorageKey),
     SetStorage(Address, StorageKey, StorageValue),
     GetExtCodeSize(Address),
@@ -32,10 +30,7 @@ pub enum Interrupt {
     Emit(Address, LogData, LogTopics),
     AccessAccount(Address),
     AccessStorage(Address, StorageKey),
-    Context(ContextKind),
     Jump,
-
-    Blockhash(usize),
 
     Call(CallParams),
 
@@ -46,11 +41,8 @@ pub enum Interrupt {
 
 pub enum Resume {
     Init,
-    SelfBalance(U256),
-    Context(ContextKind, TxContext),
     GetStorage(StorageValue, AccessStatus),
     SetStorage(StorageValue, AccessStatus, StorageStatus),
-    Blockhash(U256),
     GetExtCodeSize(U256, AccessStatus),
     GetExtCode(Bytes, AccessStatus, usize),
     GetExtCodeHash(U256, AccessStatus),
