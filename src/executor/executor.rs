@@ -151,7 +151,7 @@ impl Executor {
 
         let mut resume = Resume::Init;
         loop {
-            let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut exec_context);
+            let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut exec_context, &mut self.host);
             
             let interrupt = match interrupt {
                 Ok(i) => i,
@@ -228,15 +228,6 @@ impl Executor {
 
     fn handle_interrupt(&mut self, interrupt: &Interrupt) -> Resume {
         match interrupt {
-            Interrupt::Balance(address) => {
-                let access_status = if self.revision >= Revision::Berlin {
-                    self.host.access_account(*address)
-                }else{
-                    AccessStatus::Warm
-                };
-                let balance = self.host.get_balance(*address);
-                Resume::Balance(balance, access_status)
-            },
             Interrupt::SelfBalance(address) => {
                 let balance = self.host.get_balance(*address);
                 Resume::SelfBalance(balance)

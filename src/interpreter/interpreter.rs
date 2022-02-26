@@ -3,7 +3,7 @@ use ethereum_types::{
 };
 use core::convert::TryInto;
 
-use crate::model::{
+use crate::{model::{
     opcode::OpCode,
     revision::Revision,
     evmc::{
@@ -11,7 +11,7 @@ use crate::model::{
         TxContext,
         AccessStatus,
     }
-};
+}, host::Host};
 use crate::executor::{
     callstack::{
         CallContext, ExecutionContext
@@ -39,7 +39,6 @@ use super::{CallParams, CallKind};
 pub struct Interpreter {
     pub pc: usize,
     pub stack: Stack,
-    // pub revision: Revision,
     pub trace: bool,
 }
 
@@ -66,7 +65,8 @@ impl Interpreter {
         &self,
         resume: Resume,
         call_context: &mut CallContext,
-        exec_context: &mut ExecutionContext
+        exec_context: &mut ExecutionContext,
+        host: &mut Box<dyn Host>
     ) -> Result<Interrupt, FailureKind> {
         let mut old_gas_left = call_context.gas_left;
         
@@ -99,7 +99,7 @@ impl Interpreter {
                     continue;
                 }
                 
-                match self.next_instruction(&opcode, call_context, exec_context)? {
+                match self.next_instruction(&opcode, call_context, exec_context, host)? {
                     None => (),
                     Some(i) => {
                         if i == Interrupt::Jump {
@@ -129,25 +129,6 @@ impl Interpreter {
         
         match resume {
             Resume::Init => (),
-            Resume::Balance(balance, access_status) => {
-                let gas = 
-                    if exec_context.revision >= Revision::Berlin {
-                        match access_status {
-                            AccessStatus::Cold => 2600,
-                            AccessStatus::Warm => 100,
-                        }
-                    }else{
-                        if exec_context.revision < Revision::Tangerine {
-                            20
-                        }else if exec_context.revision < Revision::Istanbul {
-                            400
-                        }else{
-                            700
-                        }
-                    };
-                stack.push_unchecked(balance);
-                Self::consume_constant_gas(&mut call_context.gas_left, gas)?;
-            },
             Resume::SelfBalance(balance) => {
                 stack.push(balance)?;
                 Self::consume_constant_gas(&mut call_context.gas_left, 5)?;
@@ -253,7 +234,8 @@ impl Interpreter {
         &self,
         opcode: &OpCode,
         context: &mut CallContext,
-        exec_context: &mut ExecutionContext
+        exec_context: &mut ExecutionContext,
+        host: &mut Box<dyn Host>,
     ) -> Result<Option<Interrupt>, FailureKind> {
         let stack = &mut context.stack;
         let memory = &mut context.memory;
@@ -584,9 +566,33 @@ impl Interpreter {
                 Ok(None)
             },
             OpCode::BALANCE => {
-                let address = context.stack.pop()?;
+                let address = stack.pop()?;
                 let address = u256_to_address(address);
-                Ok(Some(Interrupt::Balance(address)))
+                let access_status = if exec_context.revision >= Revision::Berlin {
+                    host.access_account(address)
+                }else{
+                    AccessStatus::Warm
+                };
+                let balance = host.get_balance(address);
+                let gas = 
+                if exec_context.revision >= Revision::Berlin {
+                    match access_status {
+                        AccessStatus::Cold => 2600,
+                        AccessStatus::Warm => 100,
+                    }
+                }else{
+                    if exec_context.revision < Revision::Tangerine {
+                        20
+                    }else if exec_context.revision < Revision::Istanbul {
+                        400
+                    }else{
+                        700
+                    }
+                };
+                stack.push_unchecked(balance);
+                Self::consume_constant_gas(&mut context.gas_left, gas)?;
+
+                Ok(None)
             },
             OpCode::ORIGIN => {
                 Self::consume_constant_gas(&mut context.gas_left, 2)?;

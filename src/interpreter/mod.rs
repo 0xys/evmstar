@@ -21,7 +21,6 @@ pub type LogTopics = Vec<U256>;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Interrupt {
     AccountExists(Address),
-    Balance(Address),
     SelfBalance(Address),
     GetStorage(Address, StorageKey),
     SetStorage(Address, StorageKey, StorageValue),
@@ -47,7 +46,6 @@ pub enum Interrupt {
 
 pub enum Resume {
     Init,
-    Balance(U256, AccessStatus),
     SelfBalance(U256),
     Context(ContextKind, TxContext),
     GetStorage(StorageValue, AccessStatus),
