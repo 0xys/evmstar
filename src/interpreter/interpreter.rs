@@ -235,6 +235,9 @@ impl Interpreter {
                     };
                 Self::consume_constant_gas(&mut call_context.gas_left, account_access_cost + memory_cost)?;
             },
+            Resume::Returned(success) => {
+                stack.push_unchecked(if success { U256::one() } else { U256::zero() });
+            },
             _ => {}
         }
 

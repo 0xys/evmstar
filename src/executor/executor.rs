@@ -155,9 +155,29 @@ impl Executor {
             
             let interrupt = match interrupt {
                 Ok(i) => i,
-                Err(failure_kind) => match failure_kind {
-                    FailureKind::Revert => return Output::new_failure(failure_kind, context.gas_left),
-                    _ => return Output::new_failure(failure_kind, 0),
+                Err(failure_kind) => {
+                    let src = match self.callstack.pop() {
+                        None => panic!("pop from empty callstack is not allowed."),
+                        Some(c) => c,
+                    };
+                    if self.callstack.is_empty() {
+                        match failure_kind {
+                            FailureKind::Revert => return Output::new_failure(failure_kind, context.gas_left),
+                            _ => return Output::new_failure(failure_kind, 0),
+                        }
+                    }
+                    
+                    let dest = self.callstack.peek();
+                    let mut dest = dest.borrow_mut();
+
+                    let mut src = src.borrow_mut();
+                    if failure_kind != FailureKind::Revert {
+                        src.gas_left = 0;   // empty remaining gas unless it's Revert
+                    }
+                    dest.gas_left += src.gas_left;  // refund unused gas
+
+                    resume = Resume::Returned(false);
+                    continue;
                 }
             };
 
@@ -178,7 +198,7 @@ impl Executor {
                     dest.memory.set_range(src.ret_offset, &data[..src.ret_size]);
                     dest.gas_left += src.gas_left;  // refund unused gas
 
-                    resume = Resume::Returned;
+                    resume = Resume::Returned(true);
                     continue;
                 },
                 Interrupt::Stop(gas_left) => {
