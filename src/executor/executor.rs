@@ -277,7 +277,7 @@ impl Executor {
                 scope.value = params.value;
                 
                 let mut gas = params.gas;
-                if params.value.is_zero() {
+                if !params.value.is_zero() {
                     gas += 2300;    // gas stipend is added out of thin air.
                 }
 
