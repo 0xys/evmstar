@@ -2,6 +2,7 @@ use ethereum_types::{
     U256, U512
 };
 use core::convert::TryInto;
+use std::cmp::min;
 
 use crate::{model::{
     opcode::OpCode,
@@ -934,7 +935,7 @@ impl Interpreter {
             // },
             OpCode::CALL => {
                 let gas = scope.stack.pop()?;
-                let gas = gas.as_u32() as i64;
+                let gas = gas.as_u32() as i64;                
                 let address = scope.stack.pop()?;
                 let address = u256_to_address(address);
                 let value = scope.stack.pop()?;
@@ -946,16 +947,6 @@ impl Interpreter {
                 let ret_offset = ret_offset.as_usize();
                 let ret_size = scope.stack.pop()?;
                 let ret_size = ret_size.as_usize();
-                let params = CallParams {
-                    kind: CallKind::Plain,
-                    gas,
-                    address,
-                    value,
-                    args_offset,
-                    args_size,
-                    ret_offset,
-                    ret_size,
-                };
 
                 if !value.is_zero() && exec_context.revision >= Revision::Byzantium && scope.is_staticcall {
                     return Err(FailureKind::StaticModeViolation);
@@ -1004,9 +995,34 @@ impl Interpreter {
                 }
                 host.subtract_balance(scope.caller, value);
                 host.add_balance(address, value);
-                
-                let total_cost = static_cost + gas + args_cost + ret_cost + address_access_cost + positive_value_cost + value_to_empty_cost;
+
+                let memory_expansion_cost = args_cost + ret_cost;
+                let extra_gas = address_access_cost + positive_value_cost + value_to_empty_cost;
+
+                let gas =
+                    if exec_context.revision < Revision::Tangerine {
+                        gas
+                    }else{
+                        // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-150.md
+                        min(gas, Self::max_call_gas(scope.gas_left - extra_gas))
+                    };
+
+                let total_cost = static_cost + gas + extra_gas + memory_expansion_cost;
                 Self::consume_constant_gas(&mut scope.gas_left, total_cost)?;
+
+                // gas stipend is added out of thin air
+                let gas = gas + if !value.is_zero() { 2300 } else { 0 };
+
+                let params = CallParams {
+                    kind: CallKind::Plain,
+                    gas,
+                    address,
+                    value,
+                    args_offset,
+                    args_size,
+                    ret_offset,
+                    ret_size,
+                };
 
                 Ok(Some(Interrupt::Call(params)))
             },
@@ -1153,5 +1169,9 @@ impl Interpreter {
         };
 
         Ok(())
+    }
+
+    fn max_call_gas(gas: i64) -> i64 {
+        gas - (gas / 64)
     }
 }

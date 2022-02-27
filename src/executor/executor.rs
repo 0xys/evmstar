@@ -275,14 +275,8 @@ impl Executor {
                 scope.code = self.host.get_code(params.address, 0, code_size.as_usize()).into();
                 
                 scope.value = params.value;
-                
-                let mut gas = params.gas;
-                if !params.value.is_zero() {
-                    gas += 2300;    // gas stipend is added out of thin air.
-                }
-
-                scope.gas_limit = gas;
-                scope.gas_left = gas;
+                scope.gas_limit = params.gas;
+                scope.gas_left = params.gas;
 
                 scope.ret_offset = params.ret_offset;
                 scope.ret_size = params.ret_size;
