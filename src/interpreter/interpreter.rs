@@ -935,7 +935,7 @@ impl Interpreter {
             // },
             OpCode::CALL => {
                 let gas = scope.stack.pop()?;
-                let gas = gas.as_u32() as i64;                
+                let gas = gas.as_u32() as i64;
                 let address = scope.stack.pop()?;
                 let address = u256_to_address(address);
                 let value = scope.stack.pop()?;
