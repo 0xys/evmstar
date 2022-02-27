@@ -246,12 +246,8 @@ impl Executor {
     fn push_child_scope(&mut self, params: &CallParams) -> Result<(), FailureKind> {
         let child = {
             let parent = self.callstack.peek();
-            let mut parent = parent.borrow_mut();
-            let (dynamic_cost, child) = self.create_child_scope(&parent, params);
-        
-            if !consume_gas(&mut parent.gas_left, dynamic_cost) {
-                return Err(FailureKind::OutOfGas)
-            }
+            let parent = parent.borrow_mut();
+            let child = self.create_child_scope(&parent, params);
             child
         };
         
@@ -260,42 +256,42 @@ impl Executor {
         Ok(())
     }
 
-    fn create_child_scope(&self, parent: &CallScope, params: &CallParams) -> (i64, CallScope) {
+    fn create_child_scope(&self, parent: &CallScope, params: &CallParams) -> CallScope {
         match params.kind {
             CallKind::Plain => {
-                let mut scope = CallScope::default();
-                scope.origin = parent.origin;
-                scope.caller = parent.code_address;
-                scope.to = params.address;
-                scope.code_address = params.address;
+                let mut child = CallScope::default();
+                child.origin = parent.origin;
+                child.caller = parent.code_address;
+                child.to = params.address;
+                child.code_address = params.address;
 
-                scope.calldata = parent.memory.get_range(params.args_offset, params.args_size).into();
+                child.calldata = parent.memory.get_range(params.args_offset, params.args_size).into();
 
                 let code_size = self.host.get_code_size(params.address);
-                scope.code = self.host.get_code(params.address, 0, code_size.as_usize()).into();
+                child.code = self.host.get_code(params.address, 0, code_size.as_usize()).into();
                 
-                scope.value = params.value;
-                scope.gas_limit = params.gas;
-                scope.gas_left = params.gas;
+                child.value = params.value;
+                child.gas_limit = params.gas;
+                child.gas_left = params.gas;
 
-                scope.ret_offset = params.ret_offset;
-                scope.ret_size = params.ret_size;
+                child.ret_offset = params.ret_offset;
+                child.ret_size = params.ret_size;
 
-                scope.is_staticcall = parent.is_staticcall;    // child succeeds `is_static` flag
+                child.is_staticcall = parent.is_staticcall;    // child succeeds `is_static` flag
 
-                (0, scope)
+                child
             },
             CallKind::CallCode => {
-                let context = CallScope::default();
-                (0, context)
+                let child = CallScope::default();
+                child
             },
             CallKind::StaticCall => {
-                let context = CallScope::default();
-                (0, context)
+                let child = CallScope::default();
+                child
             },
             CallKind::DelegateCall => {
-                let context = CallScope::default();
-                (0, context)
+                let child = CallScope::default();
+                child
             },
         }
     }
