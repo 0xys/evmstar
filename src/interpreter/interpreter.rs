@@ -981,13 +981,6 @@ impl Interpreter {
                         9000
                     };
                 
-                let value_to_empty_cost = 
-                    if host.account_exists(address){
-                        0
-                    }else{
-                        25000
-                    };
-                
                 let address_access_cost =
                     if exec_context.revision >= Revision::Berlin {
                         match host.access_account(address) {
@@ -996,6 +989,13 @@ impl Interpreter {
                         }
                     }else{
                         0
+                    };
+                
+                let value_to_empty_cost = 
+                    if host.account_exists(address){
+                        0
+                    }else{
+                        25000
                     };
 
                 let caller_balance = host.get_balance(scope.caller);
