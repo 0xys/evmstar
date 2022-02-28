@@ -1014,7 +1014,7 @@ impl Interpreter {
                 let gas = gas + if !value.is_zero() { 2300 } else { 0 };
 
                 let params = CallParams {
-                    kind: CallKind::Plain,
+                    kind: CallKind::Call,
                     gas,
                     address,
                     value,

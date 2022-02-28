@@ -258,7 +258,7 @@ impl Executor {
 
     fn create_child_scope(&self, parent: &CallScope, params: &CallParams) -> CallScope {
         match params.kind {
-            CallKind::Plain => {
+            CallKind::Call => {
                 let mut child = CallScope::default();
                 child.origin = parent.origin;
                 child.caller = parent.code_address;

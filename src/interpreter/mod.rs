@@ -57,7 +57,7 @@ pub struct CallParams {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum CallKind {
-    Plain,
+    Call,
     CallCode,
     DelegateCall,
     StaticCall,
@@ -65,6 +65,6 @@ pub enum CallKind {
 
 impl Default for CallKind {
     fn default() -> Self {
-        CallKind::Plain
+        CallKind::Call
     }
 }
