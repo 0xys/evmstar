@@ -1,7 +1,6 @@
 use ethereum_types::{
     U256, U512
 };
-use core::convert::TryInto;
 use std::cmp::min;
 
 use crate::{model::{
@@ -623,20 +622,36 @@ impl Interpreter {
                 Self::consume_constant_gas(&mut scope.gas_left, account_access_cost + memory_cost)?;
                 Ok(None)
             },
-            // OpCode::RETURNDATASIZE => {
-            //     // EIP-211: https://eips.ethereum.org/EIPS/eip-211
-            //     if exec_context.revision < Revision::Byzantium {
-            //         return Err(FailureKind::InvalidInstruction);
-            //     }
-            //     Ok(None)
-            // },
-            // OpCode::RETURNDATACOPY => {
-            //     // EIP-211: https://eips.ethereum.org/EIPS/eip-211
-            //     if exec_context.revision < Revision::Byzantium {
-            //         return Err(FailureKind::InvalidInstruction);
-            //     }
-            //     Ok(None)
-            // },
+            OpCode::RETURNDATASIZE => {
+                // EIP-211: https://eips.ethereum.org/EIPS/eip-211
+                if exec_context.revision < Revision::Byzantium {
+                    return Err(FailureKind::InvalidInstruction);
+                }
+                let size = exec_context.return_data_buffer.len();
+                stack.push(U256::from(size))?;
+                Self::consume_constant_gas(&mut scope.gas_left, 2)?;
+                Ok(None)
+            },
+            OpCode::RETURNDATACOPY => {
+                // EIP-211: https://eips.ethereum.org/EIPS/eip-211
+                if exec_context.revision < Revision::Byzantium {
+                    return Err(FailureKind::InvalidInstruction);
+                }
+                let dest_offset = stack.pop()?;
+                let offset = stack.pop()?;
+                let offset = offset.as_usize();
+                let size = stack.pop()?;
+                let size = size.as_usize();
+                let data = exec_context.return_data_buffer.to_vec();
+                if offset + size > data.len() {
+                    return Err(FailureKind::InvalidMemoryAccess);
+                }
+
+                let dynamic_cost = mstore_data(dest_offset, memory, &data[offset..offset+size], scope.gas_left)
+                    .map_err(|_| FailureKind::OutOfGas)?;
+                Self::consume_constant_gas(&mut scope.gas_left, 3 + dynamic_cost)?;    // static cost of `3` is added here.
+                Ok(None)
+            },
             OpCode::EXTCODEHASH => {
                 // EIP-1052: https://eips.ethereum.org/EIPS/eip-1052
                 if exec_context.revision < Revision::Constantinople {
@@ -1054,6 +1069,7 @@ impl Interpreter {
                 let size = stack.pop()?;
                 let (gas_consumed, data) = ret(offset, size, memory, scope.gas_left)?;
                 scope.gas_left -= gas_consumed;
+                exec_context.return_data_buffer = data.clone();
                 Ok(Some(Interrupt::Return(scope.gas_left, data)))
             },
 

@@ -1,5 +1,6 @@
 use std::cell::{RefCell};
 
+use bytes::Bytes;
 use ethereum_types::{Address, U256};
 
 use crate::model::evmc::FailureKind;
@@ -11,11 +12,12 @@ use crate::interpreter::{
     stack::{Stack, Memory, Calldata}
 };
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct ExecutionContext {
     pub refund_counter: i64,
     pub revision: Revision,
     pub num_of_selfdestruct: i64,
+    pub return_data_buffer: Bytes,
 }
 
 #[derive(Clone, Debug)]

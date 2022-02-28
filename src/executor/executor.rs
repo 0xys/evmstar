@@ -118,6 +118,7 @@ impl Executor {
             refund_counter: 0,
             revision: self.revision,
             num_of_selfdestruct: 0,
+            return_data_buffer: Bytes::default(),
         };
 
         if self.revision >= Revision::Spurious {
@@ -216,7 +217,11 @@ impl Executor {
                         Err(kind) => {
                             return Output::new_failure(kind, 0);
                         },
-                        _ => (),
+                        _ => {
+                            // Upon executing any call-like opcode, the buffer is cleared.
+                            // as specified in EIP-211 https://eips.ethereum.org/EIPS/eip-211
+                            exec_context.return_data_buffer = Bytes::default();
+                        },
                     }
                 }
                 _ => ()
