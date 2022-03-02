@@ -138,7 +138,7 @@ pub enum FailureKind {
     BadJumpDestination,
     InvalidMemoryAccess,
     CallDepthExceeded,
-    StaticModeViolcation,
+    StaticModeViolation,
     PrecompileFailure,
     ContractValidationFailure,
     ArgumentOutOfRange,

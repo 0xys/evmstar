@@ -100,6 +100,10 @@ pub fn ret(offset: U256, size: U256, memory: &mut Memory, gas_left: i64) -> Resu
     Ok((gas_consumed, Bytes::from(data.to_owned())))
 }
 
+pub fn resize_memory(offset: usize, size: usize, memory: &mut Memory, gas_left: i64) -> Result<i64, FailureKind> {
+    try_expand_memory(offset, size, memory, gas_left)
+}
+
 /// memory is resized as needed and calculate memory expansion cost.
 /// 
 fn try_expand_memory(offset: usize, size: usize, memory: &mut Memory, gas_left: i64) -> Result<i64, FailureKind> {

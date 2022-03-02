@@ -31,4 +31,6 @@ pub trait Host {
     // extensions
     fn get_blockhash(&self, height: usize) -> U256;
     fn get_code(&self, address: Address, offset: usize, size: usize) -> Bytes;
+    fn add_balance(&mut self, address: Address, amount: U256);
+    fn subtract_balance(&mut self, address: Address, amount: U256);
 }

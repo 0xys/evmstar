@@ -3,9 +3,10 @@ use std::cmp::min;
 
 use crate::host::Host;
 use crate::executor::callstack::{
-    CallStack, CallContext, ExecutionContext
+    CallStack, CallScope, ExecutionContext
 };
-use crate::interpreter::stack::Calldata;
+use crate::interpreter::{CallParams, CallKind};
+use crate::interpreter::stack::{Calldata};
 use crate::interpreter::{
     Interrupt,
     interpreter::Interpreter,
@@ -21,7 +22,7 @@ use crate::model::{
 pub struct Executor {
     host: Box<dyn Host>,
     interpreter: Interpreter,
-    callstack: CallStack,
+    callstack: Box<CallStack>,
     revision: Revision,
 
     /// if true, gas cost outside of EVM opcode, such as intrinsic cost, calldata cost and access list cost,
@@ -30,13 +31,15 @@ pub struct Executor {
 }
 
 const MAX_CODE_SIZE: usize = 0x6000;
+const SUCCESS: bool = true;
+const FAILED: bool = false;
 
 impl Executor {
     pub fn new(host: Box<dyn Host>) -> Self {
         Self {
             host: host,
             interpreter: Interpreter::default(),
-            callstack: CallStack::default(),
+            callstack: Box::new(CallStack::default()),
             revision: Revision::Shanghai,
             is_execution_cost_on: false,
         }
@@ -45,7 +48,7 @@ impl Executor {
         Self {
             host: host,
             interpreter: Interpreter::new_with_tracing(),
-            callstack: CallStack::default(),
+            callstack: Box::new(CallStack::default()),
             revision: Revision::Shanghai,
             is_execution_cost_on: false,
         }
@@ -57,7 +60,7 @@ impl Executor {
                 true => Interpreter::new_with_tracing(),
                 false => Interpreter::default()
             },
-            callstack: CallStack::default(),
+            callstack: Box::new(CallStack::default()),
             revision: revision,
             is_execution_cost_on: false,
         }
@@ -71,7 +74,7 @@ impl Executor {
                 true => Interpreter::new_with_tracing(),
                 false => Interpreter::default()
             },
-            callstack: CallStack::default(),
+            callstack: Box::new(CallStack::default()),
             revision: revision,
             is_execution_cost_on: true,
         }
@@ -84,7 +87,7 @@ impl Executor {
     /// execute with eip-2930 access list provided.
     /// 
     /// https://eips.ethereum.org/EIPS/eip-2930
-    pub fn execute_with_access_list(&mut self, mut context: CallContext, access_list: AccessList) -> Output {
+    pub fn execute_with_access_list(&mut self, mut scope: CallScope, access_list: AccessList) -> Output {
         if self.revision < Revision::Berlin {
             panic!("eip2930 is enabled after Berlin onward.");
         }
@@ -93,7 +96,7 @@ impl Executor {
             self.host.access_account(access.0);
             if self.is_execution_cost_on {
                 let account_cost = 2400 * access.1.0;
-                if !consume_gas(&mut context.gas_left, account_cost as i64){
+                if !consume_gas(&mut scope.gas_left, account_cost as i64){
                     return Output::new_failure(FailureKind::OutOfGas, 0);
                 }
             }
@@ -101,26 +104,26 @@ impl Executor {
             for key in access.1.1 {
                 self.host.access_storage(access.0, key);
                 if self.is_execution_cost_on {
-                    if !consume_gas(&mut context.gas_left, 1900){
+                    if !consume_gas(&mut scope.gas_left, 1900){
                         return Output::new_failure(FailureKind::OutOfGas, 0);
                     }
                 }
             }
         }
-        self.execute_raw_with(context)
+        self.execute_raw_with(scope)
     }
 
-    pub fn execute_raw_with(&mut self, mut context: CallContext) -> Output {
-        let mut resume = Resume::Init;
-
+    pub fn execute_raw_with(&mut self, mut scope: CallScope) -> Output {
         let mut exec_context = ExecutionContext {
             refund_counter: 0,
-            revision: self.revision
+            revision: self.revision,
+            num_of_selfdestruct: 0,
+            return_data_buffer: Bytes::default(),
         };
 
         if self.revision >= Revision::Spurious {
             // EIP-170: https://eips.ethereum.org/EIPS/eip-170
-            if context.code.0.len() > MAX_CODE_SIZE {
+            if scope.code.0.len() > MAX_CODE_SIZE {
                 return Output::new_failure(FailureKind::OutOfGas, 0);
             }
         }
@@ -130,42 +133,96 @@ impl Executor {
             // accessed_addresses is initialized to include
             // the tx.sender, tx.to (or the address being created if it is a contract creation transaction)
             // and the set of all precompiles.
-            self.host.access_account(context.to);
-            self.host.access_account(context.caller);
+            self.host.access_account(scope.to);
+            self.host.access_account(scope.caller);
         }
 
         if self.is_execution_cost_on {
             // intrinsic gas cost deduction
-            if !consume_gas(&mut context.gas_left, 21000){
+            if !consume_gas(&mut scope.gas_left, 21000){
                 return Output::new_failure(FailureKind::OutOfGas, 0);
             }
 
-            let calldata_cost = cost_of_calldata(&context.calldata, self.revision);
+            let calldata_cost = cost_of_calldata(&scope.calldata, self.revision);
             // calldata cost deduction
-            if !consume_gas(&mut context.gas_left, calldata_cost){
+            if !consume_gas(&mut scope.gas_left, calldata_cost){
                 return Output::new_failure(FailureKind::OutOfGas, 0);
             }
         }
 
+        self.callstack.push(scope.clone()).unwrap();
+
+        let mut resume = Resume::Init;
         loop {
-            let interrupt = self.interpreter.resume_interpret(resume, &mut context, &mut exec_context);
+            let interrupt = {
+                let mut current_scope = self.callstack.peek().borrow_mut(); // current scope is top of the callstack.
+                let interrupt = self.interpreter.resume_interpret(resume, &mut current_scope, &mut exec_context, &mut self.host);
+                interrupt
+            };
             
             let interrupt = match interrupt {
                 Ok(i) => i,
-                Err(failure_kind) => match failure_kind {
-                    FailureKind::Revert => return Output::new_failure(failure_kind, context.gas_left),
-                    _ => return Output::new_failure(failure_kind, 0),
+                Err(failure_kind) => {
+                    let child = match self.callstack.pop() {
+                        None => panic!("pop from empty callstack is not allowed."),
+                        Some(c) => c,
+                    };
+                    if self.callstack.is_empty() {
+                        match failure_kind {
+                            FailureKind::Revert => return Output::new_failure(failure_kind, scope.gas_left),
+                            _ => return Output::new_failure(failure_kind, 0),
+                        }
+                    }
+                    
+                    let parent = self.callstack.peek();
+                    let mut parent = parent.borrow_mut();
+
+                    let mut child = child.borrow_mut();
+                    if failure_kind != FailureKind::Revert {
+                        child.gas_left = 0;   // empty remaining gas unless it's Revert
+                    }
+                    parent.gas_left += child.gas_left;  // refund unused gas
+
+                    resume = Resume::Returned(FAILED);
+                    continue;
                 }
             };
 
             match interrupt {
                 Interrupt::Return(gas_left, data) => {
-                    let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, context.num_of_selfdestruct, self.revision);
-                    return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
+                    let child = match self.callstack.pop() {
+                        None => panic!("pop from empty callstack is not allowed."),
+                        Some(c) => c,
+                    };
+                    let child = child.borrow_mut();
+                    if self.callstack.is_empty() {
+                        let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
+                        return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
+                    }
+                    let parent = self.callstack.peek();
+                    let mut parent = parent.borrow_mut();
+
+                    parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
+                    parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
+
+                    resume = Resume::Returned(SUCCESS);
+                    continue;
                 },
                 Interrupt::Stop(gas_left) => {
-                    let effective_refund = calc_effective_refund(context.gas_limit, gas_left, exec_context.refund_counter, context.num_of_selfdestruct, self.revision);
+                    let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
                     return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, Bytes::default());
+                },
+                Interrupt::Call(params) => {
+                    match self.push_child_scope(&params) {
+                        Err(kind) => {
+                            return Output::new_failure(kind, 0);
+                        },
+                        _ => {
+                            // Upon executing any call-like opcode, the buffer is cleared.
+                            // as specified in EIP-211 https://eips.ethereum.org/EIPS/eip-211
+                            exec_context.return_data_buffer = Bytes::default();
+                        },
+                    }
                 }
                 _ => ()
             };
@@ -175,80 +232,72 @@ impl Executor {
     }
 
     pub fn execute_raw(&mut self, code: &Code) -> Output {
-        let mut context = CallContext::default();
-        context.code = code.clone();
-        self.execute_raw_with(context)
+        let mut scope = CallScope::default();
+        scope.code = code.clone();
+        self.execute_raw_with(scope)
     }
 
     fn handle_interrupt(&mut self, interrupt: &Interrupt) -> Resume {
         match interrupt {
-            Interrupt::Balance(address) => {
-                let access_status = if self.revision >= Revision::Berlin {
-                    self.host.access_account(*address)
-                }else{
-                    AccessStatus::Warm
-                };
-                let balance = self.host.get_balance(*address);
-                Resume::Balance(balance, access_status)
-            },
-            Interrupt::SelfBalance(address) => {
-                let balance = self.host.get_balance(*address);
-                Resume::SelfBalance(balance)
-            }
-            Interrupt::Context(kind) => {
-                let context = self.host.get_tx_context();
-                Resume::Context(*kind, context)
-            },
-            Interrupt::GetExtCodeSize(address) => {
-                let access_status = if self.revision >= Revision::Berlin {
-                    self.host.access_account(*address)
-                }else{
-                    AccessStatus::Warm
-                };
-                let size = self.host.get_code_size(*address);
-                Resume::GetExtCodeSize(size, access_status)
-            },
-            Interrupt::GetExtCode(address, dest_offset, offset, size) => {
-                let access_status = if self.revision >= Revision::Berlin {
-                    self.host.access_account(*address)
-                }else{
-                    AccessStatus::Warm
-                };
-                let code = self.host.get_code(*address, *offset, *size);
-                Resume::GetExtCode(code, access_status, *dest_offset)
-            },
-            Interrupt::GetExtCodeHash(address) => {
-                let access_status = self.host.access_account(*address);
-                let hash = self.host.get_code_hash(*address);
-                Resume::GetExtCodeHash(hash, access_status)
-            },
-            Interrupt::Blockhash(height) => {
-                let hash = self.host.get_blockhash(*height);
-                Resume::Blockhash(hash)
-            },
-            Interrupt::GetStorage(address, key) => {
-                let access_status = if self.revision >= Revision::Berlin {
-                    self.host.access_storage(*address, *key)
-                }else{
-                    //  pre-berlin is always warm
-                    AccessStatus::Warm
-                };
-                let value = self.host.get_storage(*address, *key);
-                Resume::GetStorage(value, access_status)
-            },
-            Interrupt::SetStorage(address, key, new_value) => {
-                let access_status = if self.revision >= Revision::Berlin {
-                    self.host.access_storage(*address, *key)
-                }else{
-                    //  pre-berlin is always warm
-                    AccessStatus::Warm
-                };
-                let storage_status = self.host.set_storage(*address, *key, *new_value);
-                Resume::SetStorage(*new_value, access_status, storage_status)
+            Interrupt::Call(_) => {
+                Resume::Init
             },
             _ => {
                 Resume::Unknown
             }
+        }
+    }
+
+    fn push_child_scope(&mut self, params: &CallParams) -> Result<(), FailureKind> {
+        let child = {
+            let parent = self.callstack.peek();
+            let parent = parent.borrow_mut();
+            let child = self.create_child_scope(&parent, params);
+            child
+        };
+        
+        self.callstack.push(child)?;
+
+        Ok(())
+    }
+
+    fn create_child_scope(&self, parent: &CallScope, params: &CallParams) -> CallScope {
+        match params.kind {
+            CallKind::Call => {
+                let mut child = CallScope::default();
+                child.origin = parent.origin;
+                child.caller = parent.code_address;
+                child.to = params.address;
+                child.code_address = params.address;
+
+                child.calldata = parent.memory.get_range(params.args_offset, params.args_size).into();
+
+                let code_size = self.host.get_code_size(params.address);
+                child.code = self.host.get_code(params.address, 0, code_size.as_usize()).into();
+                
+                child.value = params.value;
+                child.gas_limit = params.gas;
+                child.gas_left = params.gas;
+
+                child.ret_offset = params.ret_offset;
+                child.ret_size = params.ret_size;
+
+                child.is_staticcall = parent.is_staticcall;    // child succeeds `is_static` flag
+
+                child
+            },
+            CallKind::CallCode => {
+                let child = CallScope::default();
+                child
+            },
+            CallKind::StaticCall => {
+                let child = CallScope::default();
+                child
+            },
+            CallKind::DelegateCall => {
+                let child = CallScope::default();
+                child
+            },
         }
     }
 }

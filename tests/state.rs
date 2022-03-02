@@ -6,7 +6,7 @@ use evmstar::host::stateful::{
     StatefulHost, Account,
 };
 use evmstar::executor::{
-    callstack::CallContext,
+    callstack::CallScope,
     executor::Executor,
 };
 use evmstar::interpreter::stack::Calldata;
@@ -163,7 +163,7 @@ fn test_sstore_legacy_logic(code: Vec<u8>, gas_used: i64, gas_refund: i64, origi
 
     let mut builder = Code::builder();
     let code = builder.append(code.as_slice());
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -197,7 +197,7 @@ fn test_sload_logic(code: &Vec<u8>, gas_used: i64, revision: Revision) {
 
     let mut builder = Code::builder();
     let code = builder.append(code.as_slice());
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -215,7 +215,7 @@ fn test_calldatasize() {
 
     let mut builder = Code::builder();
     let code = builder.append("3660005260206000f3");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
     context.calldata = Calldata::from("ffff");
@@ -235,7 +235,7 @@ fn test_calldataload() {
 
     let mut builder = Code::builder();
     let code = builder.append("60003560005260206000f3");
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
     context.calldata = Calldata::from("ffff");
@@ -267,7 +267,7 @@ fn test_calldataload_2() {
         .append(OpCode::CALLDATALOAD)
         .append("60105260206000f3");
 
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
     context.calldata = Calldata::from("ffff");
@@ -294,7 +294,7 @@ fn test_calldatacopy() {
         .append("60206000")
         .append(OpCode::RETURN);
 
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
     context.calldata = Calldata::from("ffff");
@@ -326,7 +326,7 @@ fn test_calldatacopy_2() {
         .append("60206000")
         .append(OpCode::RETURN);
 
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
     context.calldata = Calldata::from("ffff");
@@ -354,7 +354,7 @@ fn test_codesize() {
         .append("60206000")
         .append(OpCode::RETURN);
 
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -380,7 +380,7 @@ fn test_codecopy() {
         .append("60206000")
         .append(OpCode::RETURN);
 
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -408,7 +408,7 @@ fn test_codecopy_out_of_bounds() {
         .append("60406000")
         .append(OpCode::RETURN);
 
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -454,7 +454,7 @@ fn test_extcodesize_logic(gas_used: i64, revision: Revision){
         .append("60206000")
         .append(OpCode::RETURN);
 
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -504,7 +504,7 @@ fn test_extcodecopy_logic(gas_used: i64, revision: Revision) {
         .append("60206000")
         .append(OpCode::RETURN);
 
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
@@ -556,7 +556,7 @@ fn test_extcodehash_logic(gas_used: i64, revision: Revision) {
         .append("60206000")
         .append(OpCode::RETURN);
 
-    let mut context = CallContext::default();
+    let mut context = CallScope::default();
     context.code = code.clone();
     context.to = default_address();
 
