@@ -7,10 +7,10 @@ let mut executor = Executor::new(Box::new(host));
 let mut builder = Code::builder();
 
 let code = builder
+    .append(OpCode::PUSH1)  // OpCode
+    .append("02")           // hex string
     .append(OpCode::PUSH1)
-    .append("02")
-    .append(OpCode::PUSH1)
-    .append("03")
+    .append(0x03)           // u8
     .append(OpCode::ADD)
     .append(OpCode::PUSH1)
     .append("00")
