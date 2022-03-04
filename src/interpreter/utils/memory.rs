@@ -16,7 +16,7 @@ const G_MEMORY: i64 = 3;
 /// as defined in equation (326) in yellow paper.
 pub fn mload(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64) -> Result<i64, FailureKind> {
     if offset > U256::from(MAX_BUFFER_SIZE) {
-        return Err(FailureKind::ArgumentOutOfRange);
+        return Err(FailureKind::OutOfGas);
     }
     let offset = offset.as_usize();
 
@@ -31,7 +31,7 @@ pub fn mload(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64
 /// any padding added will incur gas cost.
 pub fn mstore(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64) -> Result<i64, FailureKind> {
     if offset > U256::from(MAX_BUFFER_SIZE) {
-        return Err(FailureKind::ArgumentOutOfRange);
+        return Err(FailureKind::OutOfGas);
     }
     let offset = offset.as_usize();
     let gas_consumed = try_expand_memory(offset, WORD_SIZE as usize, memory, gas_left)?;
@@ -48,7 +48,7 @@ pub fn mstore(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i6
 /// any padding added will incur gas cost.
 pub fn mstore8(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i64) -> Result<i64, FailureKind> {
     if offset > U256::from(MAX_BUFFER_SIZE) {
-        return Err(FailureKind::ArgumentOutOfRange);
+        return Err(FailureKind::OutOfGas);
     }
     let offset = offset.as_usize();
     let gas_consumed = try_expand_memory(offset, 1usize, memory, gas_left)?;
@@ -64,7 +64,7 @@ pub fn mstore8(offset: U256, memory: &mut Memory, stack: &mut Stack, gas_left: i
 /// return dynamic part of the cost.
 pub fn mstore_data(offset: U256, memory: &mut Memory, data: &[u8], gas_left: i64) -> Result<i64, FailureKind> {
     if offset > U256::from(MAX_BUFFER_SIZE) {
-        return Err(FailureKind::ArgumentOutOfRange);
+        return Err(FailureKind::OutOfGas);
     }
 
     let min_word_size = (data.len() + 31) / 32;
@@ -82,7 +82,7 @@ pub fn mstore_data(offset: U256, memory: &mut Memory, data: &[u8], gas_left: i64
 /// it incurs memory expansion cost.
 pub fn ret(offset: U256, size: U256, memory: &mut Memory, gas_left: i64) -> Result<(i64, Bytes), FailureKind> {
     if offset > U256::from(MAX_BUFFER_SIZE) {
-        return Err(FailureKind::ArgumentOutOfRange);
+        return Err(FailureKind::OutOfGas);
     }
     let offset = offset.as_usize();
 
@@ -90,7 +90,7 @@ pub fn ret(offset: U256, size: U256, memory: &mut Memory, gas_left: i64) -> Resu
         return Ok((0, Bytes::default()));
     }
     if size > U256::from(MAX_BUFFER_SIZE) {
-        return Err(FailureKind::ArgumentOutOfRange);
+        return Err(FailureKind::OutOfGas);
     }
     let size = size.as_usize();
 
