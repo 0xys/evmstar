@@ -150,6 +150,9 @@ impl Executor {
             }
         }
 
+        self.host.subtract_balance(scope.caller, scope.value);
+        self.host.add_balance(scope.to, scope.value);
+
         self.callstack.push(scope.clone()).unwrap();
 
         let mut resume = Resume::Init;
