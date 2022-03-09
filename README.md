@@ -24,7 +24,7 @@ let data = decode("0000000000000000000000000000000000000000000000000000000000000
 
 assert_eq!(StatusCode::Success, output.status_code);
 assert_eq!(Bytes::from(data), output.data);
-assert_eq!(consumed_gas(24), output.gas_left);
+assert_eq!(24, i64::max() - output.gas_left);
 ```
 
 # Progress
