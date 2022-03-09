@@ -76,7 +76,7 @@ fn get_code_for_call(gas: i64, address: &str, value: usize, args_offset: u8, arg
 fn test_call() {
     let mut host = StatefulHost::new_with(get_default_context());
 
-    let contract_address = "cc000001";
+    let contract_address = "cc000001"; // 0xcc00000100000000000000000000000000000000 
     let mut builder = Code::builder();
     let contract = builder
         .append(OpCode::PUSH1)  // 3
@@ -129,4 +129,88 @@ fn test_call() {
     assert_eq!(StatusCode::Success, output.status_code);
     assert_eq!(Bytes::from(data), output.data);
     assert_eq!(2666, consumed_gas(output.gas_left, gas_limit));
+}
+
+#[test]
+fn test_remote_self_balance() {
+    let mut host = StatefulHost::new_with(get_default_context());
+    let contract_address = "cc000001"; // 0xcc00000100000000000000000000000000000000
+
+    let contract_balance = U256::from(0xabab12);
+    let mut builder = Code::builder();
+    let contract = builder
+        .append(OpCode::SELFBALANCE)    // get contract balance
+        .append("6000")
+        .append(OpCode::MSTORE)
+        .append("60206000")
+        .append(OpCode::RETURN)
+        .clone();   // = 20
+    host.debug_deploy_contract(contract_address, contract, contract_balance);
+    
+    let mut builder = Code::builder();
+    let code = builder
+        .append_code(&mut get_code_for_call(50_000, contract_address, 0, 0, 0x00, 0, 0x20))
+        // call cost = 2621 + 3(=memory expansion)
+        // exec cost = 20
+        // total = 2644
+        .append("60206000") // 6
+        .append(OpCode::RETURN)
+        .clone();
+    
+    let gas_limit = 100_000;
+    let mut scope = CallScope::default();
+    scope.code = code;
+    scope.to = default_address();
+    scope.gas_limit = gas_limit;
+    scope.gas_left = gas_limit;
+
+    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let output = executor.execute_raw_with(scope);
+    let data = decode("0000000000000000000000000000000000000000000000000000000000abab12").unwrap();
+
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(data), output.data);
+    assert_eq!(2650, consumed_gas(output.gas_left, gas_limit));
+}
+
+#[test]
+fn test_remote_address() {
+    let mut host = StatefulHost::new_with(get_default_context());
+    let contract_address = "cc000001";
+
+    let contract_balance = U256::from(0xabab12);
+    let mut builder = Code::builder();
+    let contract = builder
+        .append(OpCode::ADDRESS)    // get contract address
+        .append("6000")
+        .append(OpCode::MSTORE)
+        .append("60206000")
+        .append(OpCode::RETURN)
+        .clone();   // = 17
+    host.debug_deploy_contract(contract_address, contract, contract_balance);
+    
+    let mut builder = Code::builder();
+    let code = builder
+        .append_code(&mut get_code_for_call(50_000, contract_address, 0, 0, 0x00, 0, 0x20))
+        // call cost = 2621 + 3(=memory expansion)
+        // exec cost = 17
+        // total = 2641
+        .append("60206000") // 6
+        .append(OpCode::RETURN)
+        .clone();
+    
+    let gas_limit = 100_000;
+    let mut scope = CallScope::default();
+    scope.code = code;
+    scope.to = default_address();
+    scope.gas_limit = gas_limit;
+    scope.gas_left = gas_limit;
+
+    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let output = executor.execute_raw_with(scope);
+    let data = decode("000000000000000000000000cc00000100000000000000000000000000000000").unwrap();
+
+    assert_eq!(StatusCode::Success, output.status_code);
+    assert_eq!(Bytes::from(data), output.data);
+    assert_eq!(2647, consumed_gas(output.gas_left, gas_limit));
 }
