@@ -22,7 +22,7 @@ pub enum Interrupt {
 
     Return(i64, Bytes),
     Stop(i64),
-    Revert(i64),
+    Revert(i64, Bytes),
 }
 
 pub enum Resume {

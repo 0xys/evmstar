@@ -166,9 +166,9 @@ impl Executor {
             let interrupt = match interrupt {
                 Ok(i) => i,
                 Err(failure_kind) => {
-                    let child = match self.callstack.pop() {
+                    match self.callstack.pop() {
                         None => panic!("pop from empty callstack is not allowed."),
-                        Some(c) => c,
+                        Some(_) => (),
                     };
                     if self.callstack.is_empty() {
                         match failure_kind {
@@ -176,15 +176,12 @@ impl Executor {
                             _ => return Output::new_failure(failure_kind, 0),
                         }
                     }
-                    
-                    let parent = self.callstack.peek();
-                    let mut parent = parent.borrow_mut();
-
-                    let mut child = child.borrow_mut();
-                    if failure_kind != FailureKind::Revert {
-                        child.gas_left = 0;   // empty remaining gas unless it's Revert
+                    /* TODO
+                    // revert dirty storage items touched in the child scope.
+                    for (k, v) in child.scoped_storage.get_original().iter() {
+                        self.host.set_storage_force(child.to, k, v);
                     }
-                    parent.gas_left += child.gas_left;  // refund unused gas
+                    */
 
                     resume = Resume::Returned(FAILED);
                     continue;
@@ -209,6 +206,31 @@ impl Executor {
                     parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
 
                     resume = Resume::Returned(SUCCESS);
+                    continue;
+                },
+                Interrupt::Revert(gas_left, data) => {
+                    let child = match self.callstack.pop() {
+                        None => panic!("pop from empty callstack is not allowed."),
+                        Some(c) => c,
+                    };
+                    let child = child.borrow_mut();
+                    if self.callstack.is_empty() {
+                        return Output::new_failure(FailureKind::Revert, gas_left);
+                    }
+                    let parent = self.callstack.peek();
+                    let mut parent = parent.borrow_mut();
+
+                    parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
+                    parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
+
+                    /* TODO
+                    // revert dirty storage items touched in the child scope.
+                    for (k, v) in child.scoped_storage.get_original().iter() {
+                        self.host.set_storage_force(child.to, k, v);
+                    }
+                    */
+
+                    resume = Resume::Returned(FAILED);
                     continue;
                 },
                 Interrupt::Stop(gas_left) => {

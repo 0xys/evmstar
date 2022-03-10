@@ -1127,9 +1127,14 @@ impl Interpreter {
                 Ok(Some(Interrupt::Call(params)))
             },
 
-            // OpCode::REVERT => {
-            //     Ok(None)
-            // },
+            OpCode::REVERT => {
+                let offset = stack.pop()?;
+                let size = stack.pop()?;
+                let (gas_consumed, data) = ret(offset, size, memory, scope.gas_left)?;
+                scope.gas_left -= gas_consumed;
+                exec_context.return_data_buffer = data.clone();
+                Ok(Some(Interrupt::Revert(scope.gas_left, data)))
+            },
 
             // OpCode::INVALID => {
             //     Ok(None)
