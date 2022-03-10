@@ -28,20 +28,21 @@ impl ScopedStorage {
         value.current = new_value;
     }
 
-    pub fn revert(&mut self, key: U256) {
+    pub fn revert_single(&mut self, key: U256) -> U256 {
         let value = self.mapping.entry(key).or_default();
         if value.modified {
             value.current = value.original;
         }
+        value.original
     }
 
-    pub fn revert_all(&mut self) {
-        let all_keys: Vec<U256> = self.mapping
-            .iter()
-            .map(|x| *x.0)
-            .collect();
-        for k in all_keys {
-            self.revert(k);
+    pub fn get_original(self) -> HashMap<U256, U256> {
+        let mut ret = HashMap::new();
+
+        for (k,v) in self.mapping.iter() {
+            ret.insert(*k, v.original);
         }
+
+        ret
     }
 }
