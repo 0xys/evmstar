@@ -18,6 +18,8 @@ use crate::model::{
     code::Code,
     revision::Revision,
 };
+
+use super::journal::Journal;
 #[allow(dead_code)]
 pub struct Executor {
     host: Box<dyn Host>,
@@ -119,6 +121,7 @@ impl Executor {
             revision: self.revision,
             num_of_selfdestruct: 0,
             return_data_buffer: Bytes::default(),
+            journal: Journal::default(),
         };
 
         if self.revision >= Revision::Spurious {
