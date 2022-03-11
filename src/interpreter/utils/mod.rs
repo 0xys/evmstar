@@ -1,6 +1,5 @@
 pub mod memory;
 pub mod gasometer;
-pub mod scoped_storage;
 
 use ethereum_types::U256;
 

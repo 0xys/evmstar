@@ -96,4 +96,7 @@ impl Host for TransientHost {
     fn subtract_balance(&mut self, address: Address, amount: U256){
 
     }
+    fn force_set_storage(&mut self, address: Address, key: U256, value: U256){
+        
+    }
 }

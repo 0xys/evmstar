@@ -169,9 +169,9 @@ impl Executor {
             let interrupt = match interrupt {
                 Ok(i) => i,
                 Err(failure_kind) => {
-                    match self.callstack.pop() {
+                    let child = match self.callstack.pop() {
                         None => panic!("pop from empty callstack is not allowed."),
-                        Some(_) => (),
+                        Some(scope) => scope,
                     };
                     if self.callstack.is_empty() {
                         match failure_kind {
@@ -179,12 +179,8 @@ impl Executor {
                             _ => return Output::new_failure(failure_kind, 0),
                         }
                     }
-                    /* TODO
-                    // revert dirty storage items touched in the child scope.
-                    for (k, v) in child.scoped_storage.get_original().iter() {
-                        self.host.set_storage_force(child.to, k, v);
-                    }
-                    */
+
+                    exec_context.journal.rollback(&mut *self.host, child.borrow().snapshot);
 
                     resume = Resume::Returned(FAILED);
                     continue;
@@ -226,12 +222,7 @@ impl Executor {
                     parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
                     parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
 
-                    /* TODO
-                    // revert dirty storage items touched in the child scope.
-                    for (k, v) in child.scoped_storage.get_original().iter() {
-                        self.host.set_storage_force(child.to, k, v);
-                    }
-                    */
+                    exec_context.journal.rollback(&mut *self.host, child.snapshot);
 
                     resume = Resume::Returned(FAILED);
                     continue;

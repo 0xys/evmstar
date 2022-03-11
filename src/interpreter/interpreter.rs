@@ -831,6 +831,9 @@ impl Interpreter {
                     //  pre-berlin is always warm
                     AccessStatus::Warm
                 };
+
+                let old_value = host.get_storage(scope.to, key);
+                exec_context.journal.record_storage(scope.to, key, old_value);  // record old value
                 let storage_status = host.set_storage(scope.to, key, new_value);
 
                 exec_context.refund_counter += calc_sstore_gas_refund(new_value, exec_context.revision, storage_status);

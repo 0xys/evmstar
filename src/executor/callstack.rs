@@ -13,7 +13,7 @@ use crate::interpreter::{
 };
 use crate::executor::{
     journal::{
-        Journal,
+        Journal, Snapshot,
     }
 };
 
@@ -44,6 +44,7 @@ pub struct CallScope {
     pub gas_left: i64,
     pub ret_offset: usize,
     pub ret_size: usize,
+    pub snapshot: Snapshot,
 }
 impl Default for CallScope {
     fn default() -> Self {
@@ -63,6 +64,7 @@ impl Default for CallScope {
             gas_left: i64::max_value(),
             ret_offset: 0,
             ret_size: 0,
+            snapshot: 0,
         }
     }
 }

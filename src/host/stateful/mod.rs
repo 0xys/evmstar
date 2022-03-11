@@ -367,4 +367,15 @@ impl Host for StatefulHost {
         
         account.balance -= amount;
     }
+
+    fn force_set_storage(&mut self, address: Address, key: U256, new_value: U256) {
+        let value = self
+            .accounts
+            .entry(address)
+            .or_default()
+            .storage
+            .entry(key)
+            .or_default();
+        value.current_value = new_value;
+    }
 }
