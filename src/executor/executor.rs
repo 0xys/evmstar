@@ -19,7 +19,6 @@ use crate::model::{
     revision::Revision,
 };
 
-use super::journal::Journal;
 #[allow(dead_code)]
 pub struct Executor {
     host: Box<dyn Host>,
@@ -121,7 +120,6 @@ impl Executor {
             revision: self.revision,
             num_of_selfdestruct: 0,
             return_data_buffer: Bytes::default(),
-            journal: Journal::default(),
         };
 
         if self.revision >= Revision::Spurious {
@@ -180,7 +178,7 @@ impl Executor {
                         }
                     }
 
-                    exec_context.journal.rollback(&mut *self.host, child.borrow().snapshot);
+                    self.host.rollback(child.borrow().snapshot);
 
                     resume = Resume::Returned(FAILED);
                     continue;
@@ -222,7 +220,7 @@ impl Executor {
                     parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
                     parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
 
-                    exec_context.journal.rollback(&mut *self.host, child.snapshot);
+                    self.host.rollback(child.snapshot);
 
                     resume = Resume::Returned(FAILED);
                     continue;

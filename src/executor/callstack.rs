@@ -12,9 +12,7 @@ use crate::interpreter::{
     stack::{Stack, Memory, Calldata}
 };
 use crate::executor::{
-    journal::{
-        Journal, Snapshot,
-    }
+    journal::Snapshot,
 };
 
 
@@ -24,7 +22,6 @@ pub struct ExecutionContext {
     pub revision: Revision,
     pub num_of_selfdestruct: i64,
     pub return_data_buffer: Bytes,
-    pub journal: Journal,
 }
 
 #[derive(Clone, Debug)]

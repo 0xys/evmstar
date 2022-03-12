@@ -5,6 +5,7 @@ use std::{
     sync::Mutex,
 };
 
+use crate::executor::journal::{Journal, Snapshot};
 use crate::host::Host;
 use crate::model::code::Code;
 use crate::model::evmc::{
@@ -87,6 +88,7 @@ pub struct StatefulHost {
     accounts: HashMap<Address, Account>,
     recorded: Mutex<Records>,
     is_always_warm: bool,
+    journal: Journal,
 }
 
 impl StatefulHost {
@@ -106,6 +108,7 @@ impl StatefulHost {
             accounts: Default::default(),
             recorded: Mutex::default(),
             is_always_warm: false,
+            journal: Journal::default(),
         }
     }
 
@@ -115,6 +118,7 @@ impl StatefulHost {
             accounts: Default::default(),
             recorded: Mutex::default(),
             is_always_warm: false,
+            journal: Journal::default(),
         }
     }
 }
@@ -197,6 +201,8 @@ impl Host for StatefulHost {
             .storage
             .entry(key)
             .or_default();
+        
+        self.journal.record_storage(address, key, value.current_value);
 
         // Follow https://eips.ethereum.org/EIPS/eip-1283 specification.
         if value.current_value == new_value {
@@ -367,7 +373,14 @@ impl Host for StatefulHost {
         
         account.balance -= amount;
     }
-
+    fn rollback(&mut self, snapshot: Snapshot) {
+        let length = self.journal.storage_log.len();
+        for _ in 0..length - 1 - snapshot {
+            if let Some(delta) = self.journal.storage_log.pop() {
+                self.force_set_storage(delta.address, delta.key, delta.previous);
+            }
+        }
+    }
     fn force_set_storage(&mut self, address: Address, key: U256, new_value: U256) {
         let value = self
             .accounts

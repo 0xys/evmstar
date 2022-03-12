@@ -1,6 +1,7 @@
 use ethereum_types::{Address, U256};
 use bytes::Bytes;
 
+use crate::executor::journal::Snapshot;
 use crate::host::Host;
 use crate::model::evmc::{
     Message, Output, TxContext, AccessStatus, StatusCode, StorageStatus
@@ -8,7 +9,7 @@ use crate::model::evmc::{
 
 /// host without no persistent storage
 pub struct TransientHost {
-    context: TxContext
+    context: TxContext,
 }
 
 impl TransientHost {
@@ -24,14 +25,13 @@ impl TransientHost {
                 gas_limit: 0,
                 gas_price: U256::zero(),
                 origin: Address::zero(),
-    
-            }
+            },
         }
     }
 
     pub fn new_with_context(context: TxContext) -> Self {
         TransientHost{
-            context: context
+            context: context,
         }
     }
 }
@@ -96,7 +96,10 @@ impl Host for TransientHost {
     fn subtract_balance(&mut self, address: Address, amount: U256){
 
     }
-    fn force_set_storage(&mut self, address: Address, key: U256, value: U256){
+    fn rollback(&mut self, snapshot: Snapshot){
         
+    }
+    fn force_set_storage(&mut self, address: Address, key: U256, value: U256){
+
     }
 }
