@@ -164,8 +164,7 @@ impl Executor {
                 interrupt
             };
             
-            let interrupt = match interrupt {
-                Ok(i) => i,
+            match interrupt {
                 Err(failure_kind) => {
                     let child = match self.callstack.pop() {
                         None => panic!("pop from empty callstack is not allowed."),
@@ -177,74 +176,74 @@ impl Executor {
                             _ => return Output::new_failure(failure_kind, 0),
                         }
                     }
-
+    
                     self.host.rollback(child.borrow().snapshot);
-
-                    resume = Resume::Returned(FAILED);
-                    continue;
-                }
-            };
-
-            match interrupt {
-                Interrupt::Return(gas_left, data) => {
-                    let child = match self.callstack.pop() {
-                        None => panic!("pop from empty callstack is not allowed."),
-                        Some(c) => c,
-                    };
-                    let child = child.borrow_mut();
-                    if self.callstack.is_empty() {
-                        let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
-                        return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
-                    }
-                    let parent = self.callstack.peek();
-                    let mut parent = parent.borrow_mut();
-
-                    parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
-                    parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
-
-                    resume = Resume::Returned(SUCCESS);
-                    continue;
-                },
-                Interrupt::Revert(gas_left, data) => {
-                    let child = match self.callstack.pop() {
-                        None => panic!("pop from empty callstack is not allowed."),
-                        Some(c) => c,
-                    };
-                    let child = child.borrow_mut();
-                    if self.callstack.is_empty() {
-                        return Output::new_failure(FailureKind::Revert, gas_left);
-                    }
-                    let parent = self.callstack.peek();
-                    let mut parent = parent.borrow_mut();
-
-                    parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
-                    parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
-
-                    self.host.rollback(child.snapshot);
-
+    
                     resume = Resume::Returned(FAILED);
                     continue;
                 },
-                Interrupt::Stop(gas_left) => {
-                    let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
-                    return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, Bytes::default());
-                },
-                Interrupt::Call(params) => {
-                    match self.push_child_scope(&params) {
-                        Err(kind) => {
-                            return Output::new_failure(kind, 0);
+                Ok(interrupt) => {
+                    match interrupt {
+                        Interrupt::Return(gas_left, data) => {
+                            let child = match self.callstack.pop() {
+                                None => panic!("pop from empty callstack is not allowed."),
+                                Some(c) => c,
+                            };
+                            let child = child.borrow_mut();
+                            if self.callstack.is_empty() {
+                                let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
+                                return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
+                            }
+                            let parent = self.callstack.peek();
+                            let mut parent = parent.borrow_mut();
+        
+                            parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
+                            parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
+        
+                            resume = Resume::Returned(SUCCESS);
+                            continue;
                         },
-                        _ => {
-                            // Upon executing any call-like opcode, the buffer is cleared.
-                            // as specified in EIP-211 https://eips.ethereum.org/EIPS/eip-211
-                            exec_context.return_data_buffer = Bytes::default();
+                        Interrupt::Revert(gas_left, data) => {
+                            let child = match self.callstack.pop() {
+                                None => panic!("pop from empty callstack is not allowed."),
+                                Some(c) => c,
+                            };
+                            let child = child.borrow_mut();
+                            if self.callstack.is_empty() {
+                                return Output::new_failure(FailureKind::Revert, gas_left);
+                            }
+                            let parent = self.callstack.peek();
+                            let mut parent = parent.borrow_mut();
+        
+                            parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
+                            parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
+        
+                            self.host.rollback(child.snapshot);
+        
+                            resume = Resume::Returned(FAILED);
+                            continue;
                         },
+                        Interrupt::Stop(gas_left) => {
+                            let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
+                            return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, Bytes::default());
+                        },
+                        Interrupt::Call(params) => {
+                            match self.push_child_scope(&params) {
+                                Err(kind) => {
+                                    return Output::new_failure(kind, 0);
+                                },
+                                _ => {
+                                    // Upon executing any call-like opcode, the buffer is cleared.
+                                    // as specified in EIP-211 https://eips.ethereum.org/EIPS/eip-211
+                                    exec_context.return_data_buffer = Bytes::default();
+                                },
+                            }
+                        },
+                        _ => panic!("")
                     }
-                }
-                _ => ()
-            };
-
-            resume = self.handle_interrupt(&interrupt);
+                    resume = self.handle_interrupt(&interrupt);
+                },
+            }
         }
     }
 
@@ -300,6 +299,7 @@ impl Executor {
                 child.ret_size = params.ret_size;
 
                 child.is_staticcall = parent.is_staticcall;    // child succeeds `is_static` flag
+                child.snapshot = self.host.take_snapshot();
 
                 child
             },

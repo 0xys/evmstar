@@ -373,9 +373,12 @@ impl Host for StatefulHost {
         
         account.balance -= amount;
     }
+    fn take_snapshot(&self) -> Snapshot {
+        self.journal.storage_log.len()
+    }
     fn rollback(&mut self, snapshot: Snapshot) {
         let length = self.journal.storage_log.len();
-        for _ in 0..length - 1 - snapshot {
+        for _ in 0..length - snapshot {
             if let Some(delta) = self.journal.storage_log.pop() {
                 self.force_set_storage(delta.address, delta.key, delta.previous);
             }

@@ -1,7 +1,6 @@
 use ethereum_types::{
     Address, U256
 };
-use crate::host::Host;
 
 #[derive(Clone, Debug, Default)]
 pub struct Journal {
@@ -18,19 +17,6 @@ impl Journal {
             previous: value,
         };
         self.storage_log.push(delta);
-    }
-
-    pub fn take_snapshot(&self) -> Snapshot {
-        self.storage_log.len() - 1
-    }
-
-    pub fn rollback(&mut self, host: &mut dyn Host, snapshot: Snapshot) {
-        let length = self.storage_log.len();
-        for _ in 0..length - 1 - snapshot {
-            if let Some(delta) = self.storage_log.pop() {
-                host.force_set_storage(delta.address, delta.key, delta.previous);
-            }
-        }
     }
 }
 

@@ -96,6 +96,9 @@ impl Host for TransientHost {
     fn subtract_balance(&mut self, address: Address, amount: U256){
 
     }
+    fn take_snapshot(&self) -> Snapshot {
+        0
+    }
     fn rollback(&mut self, snapshot: Snapshot){
         
     }

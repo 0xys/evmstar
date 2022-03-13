@@ -33,6 +33,7 @@ pub trait Host {
     fn get_code(&self, address: Address, offset: usize, size: usize) -> Bytes;
     fn add_balance(&mut self, address: Address, amount: U256);
     fn subtract_balance(&mut self, address: Address, amount: U256);
+    fn take_snapshot(&self) -> Snapshot;
     fn rollback(&mut self, snapshot: Snapshot);
     fn force_set_storage(&mut self, address: Address, key: U256, value: U256);
 }
