@@ -210,7 +210,7 @@ impl Executor {
                             };
                             let child = child.borrow_mut();
                             if self.callstack.is_empty() {
-                                return Output::new_failure(FailureKind::Revert, gas_left);
+                                return Output::new_revert(gas_left, data);
                             }
                             let parent = self.callstack.peek();
                             let mut parent = parent.borrow_mut();

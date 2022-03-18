@@ -117,6 +117,19 @@ impl Output {
             effective_gas_refund: 0,
         }
     }
+
+    pub fn new_revert(gas_left: i64, data: Bytes) -> Self {
+        let size = data.len();
+        Output {
+            gas_left: gas_left,
+            status_code: StatusCode::Failure(FailureKind::Revert),
+            create_address: None,
+            data: data,
+            size: size,
+            gas_refund: 0,
+            effective_gas_refund: 0,
+        }
+    }
 }
 
 
