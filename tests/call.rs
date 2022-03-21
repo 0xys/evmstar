@@ -3,7 +3,6 @@ use std::cell::RefCell;
 
 use bytes::Bytes;
 use ethereum_types::{U256, Address};
-use evmstar::executor::callstack::CallScope;
 use hex::decode;
 
 use evmstar::host::stateful::{
@@ -11,6 +10,10 @@ use evmstar::host::stateful::{
 };
 use evmstar::executor::{
     executor::Executor,
+    callstack::CallScope,
+};
+use evmstar::tester::{
+    EvmTester,
 };
 #[allow(unused_imports)]
 use evmstar::model::{
@@ -77,10 +80,6 @@ fn get_code_for_call(gas: i64, address: &str, value: usize, args_offset: u8, arg
 
 #[test]
 fn test_call() {
-    let host = StatefulHost::new_with(get_default_context());
-    let host = Rc::new(RefCell::new(host));
-
-    let contract_address = "cc000001"; // 0xcc00000100000000000000000000000000000000 
     let mut builder = Code::builder();
     let contract = builder
         .append(OpCode::PUSH1)  // 3
@@ -99,9 +98,8 @@ fn test_call() {
         .append(OpCode::RETURN) // 0
         .clone(); // = 27
 
-    (*host.borrow_mut()).debug_deploy_contract(contract_address, contract, U256::zero());
-    
     let mut builder = Code::builder();
+    let contract_address = "cc000001"; // 0xcc00000100000000000000000000000000000000 
     let code = builder
         .append(OpCode::PUSH1)  // 3
         .append(0xa0)
@@ -120,19 +118,17 @@ fn test_call() {
         .clone();
     
     let gas_limit = 100_000;
-    let mut scope = CallScope::default();
-    scope.code = code;
-    scope.to = default_address();
-    scope.gas_limit = gas_limit;
-    scope.gas_left = gas_limit;
-    
-    let mut executor = Executor::new_with_tracing(host.clone());
-    let output = executor.execute_raw_with(scope);
-    let data = decode("00000000000000000000000000000000000000000000000000000000000000a2").unwrap();
 
-    assert_eq!(StatusCode::Success, output.status_code);
-    assert_eq!(Bytes::from(data), output.data);
-    assert_eq!(2666, consumed_gas(output.gas_left, gas_limit));
+    let mut tester = EvmTester::new_with(get_default_context());
+    let result = tester.with_to(default_address())
+        .with_gas_limit(gas_limit)
+        .with_gas_left(gas_limit)
+        .with_contract_deployed(contract_address, contract, U256::zero())
+        .run_code(code);
+    
+    result.expect_status(StatusCode::Success)
+        .expect_output("00000000000000000000000000000000000000000000000000000000000000a2")
+        .expect_gas(2666);
 }
 
 #[test]
