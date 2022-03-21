@@ -75,6 +75,6 @@ fn test_revert_one_level() {
     assert_eq!(Bytes::from(data), output.data);
     assert_eq!(22124, consumed_gas(output.gas_left, gas_limit));
 
-    // let value = host.get_storage(default_address(), U256::from(0x01i32));
-    // assert_eq!(U256::from(0xddi32), value);
+    let value = (*host).borrow().debug_get_storage(default_address(), U256::from(0x01));
+    assert_eq!(U256::from(0x00), value);    // set value is reverted
 }
