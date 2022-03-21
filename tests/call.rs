@@ -1,17 +1,6 @@
-use std::rc::Rc;
-use std::cell::RefCell;
-
-use bytes::Bytes;
 use ethereum_types::{U256, Address};
 use hex::decode;
 
-use evmstar::host::stateful::{
-    StatefulHost,
-};
-use evmstar::executor::{
-    executor::Executor,
-    callstack::CallScope,
-};
 use evmstar::tester::{
     EvmTester,
 };
@@ -29,9 +18,7 @@ use evmstar::model::{
 };
 
 fn default_address() -> Address { Address::from_low_u64_be(0xffffeeee) }
-fn consumed_gas(amount: i64, gas_limit: i64) -> i64 {
-    gas_limit - amount
-}
+
 fn get_address(address_hex: &str) -> Address {
     let mut dst = [0u8; 20];
     let hex = decode(address_hex).unwrap();
@@ -133,10 +120,6 @@ fn test_call() {
 
 #[test]
 fn test_remote_self_balance() {
-    let mut host = StatefulHost::new_with(get_default_context());
-    let contract_address = "cc000001"; // 0xcc00000100000000000000000000000000000000
-
-    let contract_balance = U256::from(0xabab12);
     let mut builder = Code::builder();
     let contract = builder
         .append(OpCode::SELFBALANCE)    // get contract balance
@@ -145,8 +128,9 @@ fn test_remote_self_balance() {
         .append("60206000")
         .append(OpCode::RETURN)
         .clone();   // = 20
-    host.debug_deploy_contract(contract_address, contract, contract_balance);
     
+    let contract_address = "cc000001"; // 0xcc00000100000000000000000000000000000000
+    let contract_balance = U256::from(0xabab12);
     let mut builder = Code::builder();
     let code = builder
         .append_code(&mut get_code_for_call(50_000, contract_address, 0, 0, 0x00, 0, 0x20))
@@ -158,28 +142,21 @@ fn test_remote_self_balance() {
         .clone();
     
     let gas_limit = 100_000;
-    let mut scope = CallScope::default();
-    scope.code = code;
-    scope.to = default_address();
-    scope.gas_limit = gas_limit;
-    scope.gas_left = gas_limit;
 
-    let host = Rc::new(RefCell::new(host));
-    let mut executor = Executor::new_with_tracing(host.clone());
-    let output = executor.execute_raw_with(scope);
-    let data = decode("0000000000000000000000000000000000000000000000000000000000abab12").unwrap();
-
-    assert_eq!(StatusCode::Success, output.status_code);
-    assert_eq!(Bytes::from(data), output.data);
-    assert_eq!(2650, consumed_gas(output.gas_left, gas_limit));
+    let mut tester = EvmTester::new_with(get_default_context());
+    let result = tester.with_to(default_address())
+        .with_gas_limit(gas_limit)
+        .with_gas_left(gas_limit)
+        .with_contract_deployed(contract_address, contract, contract_balance)
+        .run_code(code);
+    
+    result.expect_status(StatusCode::Success)
+        .expect_output("0000000000000000000000000000000000000000000000000000000000abab12")
+        .expect_gas(2650);
 }
 
 #[test]
 fn test_remote_address() {
-    let mut host = StatefulHost::new_with(get_default_context());
-    let contract_address = "cc000001";
-
-    let contract_balance = U256::from(0xabab12);
     let mut builder = Code::builder();
     let contract = builder
         .append(OpCode::ADDRESS)    // get contract address
@@ -188,8 +165,9 @@ fn test_remote_address() {
         .append("60206000")
         .append(OpCode::RETURN)
         .clone();   // = 17
-    host.debug_deploy_contract(contract_address, contract, contract_balance);
-    
+
+    let contract_address = "cc000001";
+    let contract_balance = U256::from(0xabab12);
     let mut builder = Code::builder();
     let code = builder
         .append_code(&mut get_code_for_call(50_000, contract_address, 0, 0, 0x00, 0, 0x20))
@@ -201,18 +179,14 @@ fn test_remote_address() {
         .clone();
     
     let gas_limit = 100_000;
-    let mut scope = CallScope::default();
-    scope.code = code;
-    scope.to = default_address();
-    scope.gas_limit = gas_limit;
-    scope.gas_left = gas_limit;
-
-    let host = Rc::new(RefCell::new(host));
-    let mut executor = Executor::new_with_tracing(host.clone());
-    let output = executor.execute_raw_with(scope);
-    let data = decode("000000000000000000000000cc00000100000000000000000000000000000000").unwrap();
-
-    assert_eq!(StatusCode::Success, output.status_code);
-    assert_eq!(Bytes::from(data), output.data);
-    assert_eq!(2647, consumed_gas(output.gas_left, gas_limit));
+    let mut tester = EvmTester::new_with(get_default_context());
+    let result = tester.with_to(default_address())
+        .with_gas_limit(gas_limit)
+        .with_gas_left(gas_limit)
+        .with_contract_deployed(contract_address, contract, contract_balance)
+        .run_code(code);
+    
+    result.expect_status(StatusCode::Success)
+        .expect_output("000000000000000000000000cc00000100000000000000000000000000000000")
+        .expect_gas(2647);
 }
