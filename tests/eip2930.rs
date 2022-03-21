@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use bytes::Bytes;
 use ethereum_types::{U256, Address};
 use evmstar::model::evmc::AccessList;
@@ -59,9 +62,10 @@ fn get_default_context() -> TxContext {
 fn test_eip2930_nocode() {
     {
         let host = StatefulHost::new_with(get_default_context());
+        let host = Rc::new(RefCell::new(host));
 
         let context = CallScope::default();
-        let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
+        let mut executor = Executor::new_with_execution_cost(host.clone(), true, Revision::Berlin);
         
         let mut access_list = AccessList::default();
         access_list.add_account(address_0());
@@ -73,9 +77,10 @@ fn test_eip2930_nocode() {
     }
     {
         let host = StatefulHost::new_with(get_default_context());
+        let host = Rc::new(RefCell::new(host));
 
         let context = CallScope::default();
-        let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
+        let mut executor = Executor::new_with_execution_cost(host.clone(), true, Revision::Berlin);
         
         let mut access_list = AccessList::default();
         access_list.add_account(address_0());
@@ -93,7 +98,8 @@ fn test_eip2930_nocode() {
 fn test_eip2930_nocode_storage() {
     {
         let host = StatefulHost::new_with(get_default_context());
-        let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
+        let host = Rc::new(RefCell::new(host));
+        let mut executor = Executor::new_with_execution_cost(host.clone(), true, Revision::Berlin);
         
         let mut access_list = AccessList::default();
         access_list.add_account(address_0());
@@ -110,7 +116,8 @@ fn test_eip2930_nocode_storage() {
     }
     {
         let host = StatefulHost::new_with(get_default_context());
-        let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
+        let host = Rc::new(RefCell::new(host));
+        let mut executor = Executor::new_with_execution_cost(host.clone(), true, Revision::Berlin);
         
         let mut access_list = AccessList::default();
         access_list.add_account(address_0());
@@ -131,7 +138,8 @@ fn test_eip2930_nocode_storage() {
 #[test]
 fn test_eip2930() {
     let host = StatefulHost::new_with(get_default_context());
-    let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_execution_cost(host.clone(), true, Revision::Berlin);
     
     let mut access_list = AccessList::default();
     access_list.add_account(address_default());
@@ -186,10 +194,11 @@ fn test_eip2930() {
 
 #[test]
 fn test_eip2930_sstore() {
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(address_default(), U256::from(0), U256::from(1));    // add original value
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(address_default(), U256::from(0), U256::from(1));    // add original value
     
-    let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
+    let mut executor = Executor::new_with_execution_cost(host.clone(), true, Revision::Berlin);
     
     let mut access_list = AccessList::default();
     access_list.add_storage(address_default(), U256::from(0));  // make it warm

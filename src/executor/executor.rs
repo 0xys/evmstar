@@ -85,8 +85,7 @@ impl Executor {
     }
 
     pub fn call_message(&mut self, msg: &Message) -> Output {
-        let mut host = self.host.borrow_mut();
-        host.call(msg)
+        (*self.host).borrow_mut().call(msg)
     }
 
     /// execute with eip-2930 access list provided.
@@ -98,7 +97,7 @@ impl Executor {
         }
 
         {
-            let mut host = self.host.borrow_mut();
+            let mut host = (*self.host).borrow_mut();
 
             for access in access_list.map.into_iter() {
                 host.access_account(access.0);
@@ -138,15 +137,15 @@ impl Executor {
             }
         }
 
-        let mut host = self.host.borrow_mut();
+        // let mut host = (*self.host).borrow_mut();
 
         if self.revision >= Revision::Berlin {
             // https://eips.ethereum.org/EIPS/eip-2929#specification
             // accessed_addresses is initialized to include
             // the tx.sender, tx.to (or the address being created if it is a contract creation transaction)
             // and the set of all precompiles.
-            host.access_account(scope.to);
-            host.access_account(scope.caller);
+            (*self.host).borrow_mut().access_account(scope.to);
+            (*self.host).borrow_mut().access_account(scope.caller);
         }
 
         if self.is_execution_cost_on {
@@ -162,8 +161,8 @@ impl Executor {
             }
         }
 
-        host.subtract_balance(scope.caller, scope.value);
-        host.add_balance(scope.to, scope.value);
+        (*self.host).borrow_mut().subtract_balance(scope.caller, scope.value);
+        (*self.host).borrow_mut().add_balance(scope.to, scope.value);
 
         self.callstack.push(scope.clone()).unwrap();
 
@@ -171,7 +170,7 @@ impl Executor {
         loop {
             let interrupt = {
                 let mut current_scope = self.callstack.peek().borrow_mut(); // current scope is top of the callstack.
-                let interrupt = self.interpreter.resume_interpret(resume, &mut current_scope, &mut exec_context, host);
+                let interrupt = self.interpreter.resume_interpret(resume, &mut current_scope, &mut exec_context, self.host.clone());
                 interrupt
             };
             
@@ -188,7 +187,7 @@ impl Executor {
                         }
                     }
     
-                    host.rollback(child.borrow().snapshot);
+                    (*self.host).borrow_mut().rollback(child.borrow().snapshot);
     
                     resume = Resume::Returned(FAILED);
                     continue;
@@ -229,7 +228,7 @@ impl Executor {
                             parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
                             parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
         
-                            host.rollback(child.snapshot);
+                            (*self.host).borrow_mut().rollback(child.snapshot);
         
                             resume = Resume::Returned(FAILED);
                             continue;
@@ -290,7 +289,7 @@ impl Executor {
     }
 
     fn create_child_scope(&self, parent: &CallScope, params: &CallParams) -> CallScope {
-        let host = self.host.borrow_mut();
+        let host = (*self.host).borrow_mut();
         match params.kind {
             CallKind::Call => {
                 let mut child = CallScope::default();

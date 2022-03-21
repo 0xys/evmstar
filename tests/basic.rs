@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use evmstar::executor::callstack::CallScope;
 use evmstar::host::host::{
     TransientHost,
@@ -30,7 +33,8 @@ fn test_empty_with_intrinsic_cost() {
 
     for revision in Revision::iter() {
         let host = TransientHost::new();
-        let mut executor = Executor::new_with_execution_cost(Box::new(host), true, revision);
+        let host = Rc::new(RefCell::new(host));
+        let mut executor = Executor::new_with_execution_cost(host.clone(), true, revision);
 
         let output = executor.execute_raw(code);
         assert_eq!(StatusCode::Success, output.status_code);
@@ -42,7 +46,8 @@ fn test_empty_with_intrinsic_cost() {
 fn test_calldata_cost() {
     for revision in Revision::iter() {
         let host = TransientHost::new();
-        let mut executor = Executor::new_with_execution_cost(Box::new(host), true, revision);
+        let host = Rc::new(RefCell::new(host));
+        let mut executor = Executor::new_with_execution_cost(host.clone(), true, revision);
 
         let mut context = CallScope::default();
         let mut vec: Vec<u8> = Vec::new();
@@ -78,7 +83,8 @@ fn test_too_large_code() {
 
     for revision in Revision::iter() {
         let host = TransientHost::new();
-        let mut executor = Executor::new_with(Box::new(host), false, revision);
+        let host = Rc::new(RefCell::new(host));
+        let mut executor = Executor::new_with(host.clone(), false, revision);
         
         let output = executor.execute_raw(&code);
         if revision >= Revision::Spurious {

@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use bytes::Bytes;
 use ethereum_types::{U256, Address};
 use evmstar::executor::callstack::CallScope;
@@ -74,7 +77,8 @@ fn get_code_for_call(gas: i64, address: &str, value: usize, args_offset: u8, arg
 
 #[test]
 fn test_call() {
-    let mut host = StatefulHost::new_with(get_default_context());
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
 
     let contract_address = "cc000001"; // 0xcc00000100000000000000000000000000000000 
     let mut builder = Code::builder();
@@ -95,7 +99,7 @@ fn test_call() {
         .append(OpCode::RETURN) // 0
         .clone(); // = 27
 
-    host.debug_deploy_contract(contract_address, contract, U256::zero());
+    (*host.borrow_mut()).debug_deploy_contract(contract_address, contract, U256::zero());
     
     let mut builder = Code::builder();
     let code = builder
@@ -122,7 +126,7 @@ fn test_call() {
     scope.gas_limit = gas_limit;
     scope.gas_left = gas_limit;
     
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let output = executor.execute_raw_with(scope);
     let data = decode("00000000000000000000000000000000000000000000000000000000000000a2").unwrap();
 
@@ -164,7 +168,8 @@ fn test_remote_self_balance() {
     scope.gas_limit = gas_limit;
     scope.gas_left = gas_limit;
 
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let output = executor.execute_raw_with(scope);
     let data = decode("0000000000000000000000000000000000000000000000000000000000abab12").unwrap();
 
@@ -206,7 +211,8 @@ fn test_remote_address() {
     scope.gas_limit = gas_limit;
     scope.gas_left = gas_limit;
 
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let output = executor.execute_raw_with(scope);
     let data = decode("000000000000000000000000cc00000100000000000000000000000000000000").unwrap();
 

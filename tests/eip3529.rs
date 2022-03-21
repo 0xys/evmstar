@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use bytes::Bytes;
 use ethereum_types::{U256, Address};
 use hex_literal::hex;
@@ -42,10 +45,11 @@ fn get_default_context() -> TxContext {
 }
 
 fn sstore_eip3529(code: Vec<u8>, gas_used: i64, gas_refund: i64, warm: bool, original: usize) {
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(original));
     if warm {
-        host.debug_set_storage_as_warm();
+        (*host).borrow_mut().debug_set_storage_as_warm();
     }
 
     let mut builder = Code::builder();
@@ -54,7 +58,7 @@ fn sstore_eip3529(code: Vec<u8>, gas_used: i64, gas_refund: i64, warm: bool, ori
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::London);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::London);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);

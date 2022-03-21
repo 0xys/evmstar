@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use bytes::Bytes;
 use ethereum_types::{U256, Address};
 
@@ -45,7 +48,8 @@ fn get_default_context() -> TxContext {
 /// test case from: https://eips.ethereum.org/EIPS/eip-1283
 fn test_eip1283_1(){// 1
     let host = StatefulHost::new_with(get_default_context());
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let mut builder = Code::builder();
 
     let code = builder.append("60006000556000600055");
@@ -60,7 +64,8 @@ fn test_eip1283_1(){// 1
 #[test]
 fn test_eip1283_2(){// 2
     let host = StatefulHost::new_with(get_default_context());
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let mut builder = Code::builder();
 
     let code = builder.append("60006000556001600055");
@@ -75,7 +80,8 @@ fn test_eip1283_2(){// 2
 #[test]
 fn test_eip1283_3(){// 3
     let host = StatefulHost::new_with(get_default_context());
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let mut builder = Code::builder();
 
     let code = builder.append("60016000556000600055");
@@ -90,7 +96,8 @@ fn test_eip1283_3(){// 3
 #[test]
 fn test_eip1283_4(){// 4
     let host = StatefulHost::new_with(get_default_context());
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let mut builder = Code::builder();
 
     let code = builder.append("60016000556002600055");
@@ -105,7 +112,8 @@ fn test_eip1283_4(){// 4
 #[test]
 fn test_eip1283_5(){// 5
     let host = StatefulHost::new_with(get_default_context());
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let mut builder = Code::builder();
 
     let code = builder.append("60016000556001600055");
@@ -119,8 +127,9 @@ fn test_eip1283_5(){// 5
 
 #[test]
 fn test_eip1283_6(){// 6
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
     
     let mut builder = Code::builder();
     let code = builder.append("60006000556000600055");
@@ -128,7 +137,7 @@ fn test_eip1283_6(){// 6
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -139,8 +148,9 @@ fn test_eip1283_6(){// 6
 
 #[test]
 fn test_eip1283_7(){// 7
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
 
     let mut builder = Code::builder();
     let code = builder.append("60006000556001600055");
@@ -148,7 +158,7 @@ fn test_eip1283_7(){// 7
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -159,8 +169,9 @@ fn test_eip1283_7(){// 7
 
 #[test]
 fn test_eip1283_8(){// 8
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
 
     let mut builder = Code::builder();
     let code = builder.append("60006000556002600055");
@@ -168,7 +179,7 @@ fn test_eip1283_8(){// 8
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -179,8 +190,9 @@ fn test_eip1283_8(){// 8
 
 #[test]
 fn test_eip1283_9(){// 9
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
 
     let mut builder = Code::builder();
     let code = builder.append("60026000556000600055");
@@ -188,7 +200,7 @@ fn test_eip1283_9(){// 9
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -199,8 +211,9 @@ fn test_eip1283_9(){// 9
 
 #[test]
 fn test_eip1283_10(){// 10
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
 
     let mut builder = Code::builder();
     let code = builder.append("60026000556003600055");
@@ -208,7 +221,7 @@ fn test_eip1283_10(){// 10
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -219,8 +232,9 @@ fn test_eip1283_10(){// 10
 
 #[test]
 fn test_eip1283_11(){// 11
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
 
     let mut builder = Code::builder();
     let code = builder.append("60026000556001600055");
@@ -228,7 +242,7 @@ fn test_eip1283_11(){// 11
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -239,8 +253,9 @@ fn test_eip1283_11(){// 11
 
 #[test]
 fn test_eip1283_12(){// 12
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
 
     let mut builder = Code::builder();
     let code = builder.append("60026000556002600055");
@@ -248,7 +263,7 @@ fn test_eip1283_12(){// 12
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -259,8 +274,9 @@ fn test_eip1283_12(){// 12
 
 #[test]
 fn test_eip1283_13(){// 13
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
 
     let mut builder = Code::builder();
     let code = builder.append("60016000556000600055");
@@ -268,7 +284,7 @@ fn test_eip1283_13(){// 13
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -279,8 +295,9 @@ fn test_eip1283_13(){// 13
 
 #[test]
 fn test_eip1283_14(){// 14
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
 
     let mut builder = Code::builder();
     let code = builder.append("60016000556002600055");
@@ -288,7 +305,7 @@ fn test_eip1283_14(){// 14
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -299,8 +316,9 @@ fn test_eip1283_14(){// 14
 
 #[test]
 fn test_eip1283_15(){// 15
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
 
     let mut builder = Code::builder();
     let code = builder.append("60016000556001600055");
@@ -308,7 +326,7 @@ fn test_eip1283_15(){// 15
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -319,8 +337,9 @@ fn test_eip1283_15(){// 15
 
 #[test]
 fn test_eip1283_16(){// 16
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(0x00));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(0x00));
 
     let mut builder = Code::builder();
     let code = builder.append("600160005560006000556001600055");
@@ -328,7 +347,7 @@ fn test_eip1283_16(){// 16
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -339,8 +358,9 @@ fn test_eip1283_16(){// 16
 
 #[test]
 fn test_eip1283_17(){// 17
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(0x01));
 
     let mut builder = Code::builder();
     let code = builder.append("600060005560016000556000600055");
@@ -348,7 +368,7 @@ fn test_eip1283_17(){// 17
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Constantinople);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Constantinople);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);

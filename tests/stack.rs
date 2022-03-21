@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use bytes::Bytes;
 
 use evmstar::host::host::TransientHost;
@@ -22,7 +25,8 @@ fn consumed_gas(amount: i64) -> i64 {
 #[test]
 pub fn test_push() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -47,7 +51,8 @@ pub fn test_push() {
 #[test]
 pub fn test_pop_empty() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -61,7 +66,8 @@ pub fn test_pop_empty() {
 #[test]
 pub fn test_push_overflow() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let mut code: Vec<u8> = vec![];
@@ -81,7 +87,8 @@ pub fn test_push_overflow() {
 pub fn test_push2() {
     {
         let host = TransientHost::new();
-        let mut executor = Executor::new(Box::new(host));
+        let host = Rc::new(RefCell::new(host));
+        let mut executor = Executor::new(host.clone());
         let mut builder = Code::builder();
     
         let code = builder
@@ -104,7 +111,8 @@ pub fn test_push2() {
     }
     {
         let host = TransientHost::new();
-        let mut executor = Executor::new(Box::new(host));
+        let host = Rc::new(RefCell::new(host));
+        let mut executor = Executor::new(host.clone());
         let mut builder = Code::builder();
     
         let code = builder
@@ -130,7 +138,8 @@ pub fn test_push2() {
 #[test]
 pub fn test_push32() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let data = decode("ff00000000000000000000000000000000000000000000000000000011223344").unwrap();
@@ -157,7 +166,8 @@ pub fn test_push32() {
 #[test]
 pub fn test_push32_with_expansion() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let data =          decode("ff000000000000000000000000000000ff000000000000000000000011223344").unwrap();
@@ -185,7 +195,8 @@ pub fn test_push32_with_expansion() {
 #[test]
 pub fn test_dup1() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -211,7 +222,8 @@ pub fn test_dup1() {
 #[test]
 pub fn test_dup2() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -239,7 +251,8 @@ pub fn test_dup2() {
 #[test]
 pub fn test_dup3() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -269,7 +282,8 @@ pub fn test_dup3() {
 #[test]
 pub fn test_dup_overflow() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -290,7 +304,8 @@ pub fn test_dup_overflow() {
 #[test]
 pub fn test_swap2swap3() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -324,7 +339,8 @@ pub fn test_swap2swap3() {
 #[test]
 fn test_all() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     /*

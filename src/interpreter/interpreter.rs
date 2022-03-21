@@ -1,7 +1,7 @@
 use ethereum_types::{
     U256, U512
 };
-use std::cmp::min;
+use std::{cmp::min, cell::{RefCell}, rc::Rc};
 
 use crate::{model::{
     opcode::OpCode,
@@ -66,7 +66,7 @@ impl Interpreter {
         resume: Resume,
         scope: &mut CallScope,
         exec_context: &mut ExecutionContext,
-        host: &mut Box<dyn Host>
+        host: Rc<RefCell<dyn Host>>
     ) -> Result<Interrupt, FailureKind> {
         let mut old_gas_left = scope.gas_left;
         
@@ -99,7 +99,7 @@ impl Interpreter {
                     continue;
                 }
                 
-                match self.next_instruction(&opcode, scope, exec_context, host)? {
+                match self.next_instruction(&opcode, scope, exec_context, host.clone())? {
                     None => (),
                     Some(i) => {
                         if i == Interrupt::Jump {
@@ -148,8 +148,9 @@ impl Interpreter {
         opcode: &OpCode,
         scope: &mut CallScope,
         exec_context: &mut ExecutionContext,
-        host: &mut Box<dyn Host>,
+        host: Rc<RefCell<dyn Host>>,
     ) -> Result<Option<Interrupt>, FailureKind> {
+        let mut host = host.borrow_mut();
         let stack = &mut scope.stack;
         let memory = &mut scope.memory;
 
