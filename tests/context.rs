@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use bytes::Bytes;
 use ethereum_types::{U256, Address};
 
@@ -38,7 +41,8 @@ fn get_default_context() -> TxContext {
 #[test]
 fn test_gas_price() {
     let host = TransientHost::new_with_context(get_default_context());
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -63,7 +67,8 @@ fn test_gas_price() {
 #[test]
 fn test_coinbase() {
     let host = TransientHost::new_with_context(get_default_context());
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -88,7 +93,8 @@ fn test_coinbase() {
 #[test]
 fn test_block_number() {
     let host = TransientHost::new_with_context(get_default_context());
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -113,7 +119,8 @@ fn test_block_number() {
 #[test]
 fn test_block_timestamp() {
     let host = TransientHost::new_with_context(get_default_context());
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -138,7 +145,8 @@ fn test_block_timestamp() {
 #[test]
 fn test_gas_limit() {
     let host = TransientHost::new_with_context(get_default_context());
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -163,7 +171,8 @@ fn test_gas_limit() {
 #[test]
 fn test_base_fee() {
     let host = TransientHost::new_with_context(get_default_context());
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -188,7 +197,8 @@ fn test_base_fee() {
 #[test]
 fn test_chain_id() {
     let host = TransientHost::new_with_context(get_default_context());
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -213,7 +223,8 @@ fn test_chain_id() {
 #[test]
 fn test_difficulty() {
     let host = TransientHost::new_with_context(get_default_context());
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -238,7 +249,8 @@ fn test_difficulty() {
 #[test]
 fn test_blockhash() {
     let host = TransientHost::new_with_context(get_default_context());
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder

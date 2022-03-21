@@ -1,6 +1,9 @@
 use bytes::Bytes;
 use std::cmp::min;
 
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use crate::host::Host;
 use crate::executor::callstack::{
     CallStack, CallScope, ExecutionContext
@@ -21,7 +24,7 @@ use crate::model::{
 
 #[allow(dead_code)]
 pub struct Executor {
-    host: Box<dyn Host>,
+    host: Rc<RefCell<dyn Host>>,
     interpreter: Interpreter,
     callstack: Box<CallStack>,
     revision: Revision,
@@ -36,7 +39,7 @@ const SUCCESS: bool = true;
 const FAILED: bool = false;
 
 impl Executor {
-    pub fn new(host: Box<dyn Host>) -> Self {
+    pub fn new(host: Rc<RefCell<dyn Host>>) -> Self {
         Self {
             host: host,
             interpreter: Interpreter::default(),
@@ -45,7 +48,7 @@ impl Executor {
             is_execution_cost_on: false,
         }
     }
-    pub fn new_with_tracing(host: Box<dyn Host>) -> Self {
+    pub fn new_with_tracing(host: Rc<RefCell<dyn Host>>) -> Self {
         Self {
             host: host,
             interpreter: Interpreter::new_with_tracing(),
@@ -54,7 +57,7 @@ impl Executor {
             is_execution_cost_on: false,
         }
     }
-    pub fn new_with(host: Box<dyn Host>, is_trace: bool, revision: Revision) -> Self {
+    pub fn new_with(host: Rc<RefCell<dyn Host>>, is_trace: bool, revision: Revision) -> Self {
         Self {
             host: host,
             interpreter: match is_trace {
@@ -68,7 +71,7 @@ impl Executor {
     }
 
     /// gas cost that is not related to EVM opcode, such as intrinsic cost, calldata cost and access list cost, will be charged.
-    pub fn new_with_execution_cost(host: Box<dyn Host>, is_trace: bool, revision: Revision) -> Self {
+    pub fn new_with_execution_cost(host: Rc<RefCell<dyn Host>>, is_trace: bool, revision: Revision) -> Self {
         Self {
             host: host,
             interpreter: match is_trace {
@@ -82,7 +85,7 @@ impl Executor {
     }
 
     pub fn call_message(&mut self, msg: &Message) -> Output {
-        self.host.call(msg)
+        (*self.host).borrow_mut().call(msg)
     }
 
     /// execute with eip-2930 access list provided.
@@ -93,24 +96,29 @@ impl Executor {
             panic!("eip2930 is enabled after Berlin onward.");
         }
 
-        for access in access_list.map.into_iter() {
-            self.host.access_account(access.0);
-            if self.is_execution_cost_on {
-                let account_cost = 2400 * access.1.0;
-                if !consume_gas(&mut scope.gas_left, account_cost as i64){
-                    return Output::new_failure(FailureKind::OutOfGas, 0);
-                }
-            }
+        {
+            let mut host = (*self.host).borrow_mut();
 
-            for key in access.1.1 {
-                self.host.access_storage(access.0, key);
+            for access in access_list.map.into_iter() {
+                host.access_account(access.0);
                 if self.is_execution_cost_on {
-                    if !consume_gas(&mut scope.gas_left, 1900){
+                    let account_cost = 2400 * access.1.0;
+                    if !consume_gas(&mut scope.gas_left, account_cost as i64){
                         return Output::new_failure(FailureKind::OutOfGas, 0);
+                    }
+                }
+    
+                for key in access.1.1 {
+                    host.access_storage(access.0, key);
+                    if self.is_execution_cost_on {
+                        if !consume_gas(&mut scope.gas_left, 1900){
+                            return Output::new_failure(FailureKind::OutOfGas, 0);
+                        }
                     }
                 }
             }
         }
+        
         self.execute_raw_with(scope)
     }
 
@@ -129,13 +137,15 @@ impl Executor {
             }
         }
 
+        // let mut host = (*self.host).borrow_mut();
+
         if self.revision >= Revision::Berlin {
             // https://eips.ethereum.org/EIPS/eip-2929#specification
             // accessed_addresses is initialized to include
             // the tx.sender, tx.to (or the address being created if it is a contract creation transaction)
             // and the set of all precompiles.
-            self.host.access_account(scope.to);
-            self.host.access_account(scope.caller);
+            (*self.host).borrow_mut().access_account(scope.to);
+            (*self.host).borrow_mut().access_account(scope.caller);
         }
 
         if self.is_execution_cost_on {
@@ -151,8 +161,8 @@ impl Executor {
             }
         }
 
-        self.host.subtract_balance(scope.caller, scope.value);
-        self.host.add_balance(scope.to, scope.value);
+        (*self.host).borrow_mut().subtract_balance(scope.caller, scope.value);
+        (*self.host).borrow_mut().add_balance(scope.to, scope.value);
 
         self.callstack.push(scope.clone()).unwrap();
 
@@ -160,7 +170,7 @@ impl Executor {
         loop {
             let interrupt = {
                 let mut current_scope = self.callstack.peek().borrow_mut(); // current scope is top of the callstack.
-                let interrupt = self.interpreter.resume_interpret(resume, &mut current_scope, &mut exec_context, &mut self.host);
+                let interrupt = self.interpreter.resume_interpret(resume, &mut current_scope, &mut exec_context, self.host.clone());
                 interrupt
             };
             
@@ -177,7 +187,7 @@ impl Executor {
                         }
                     }
     
-                    self.host.rollback(child.borrow().snapshot);
+                    (*self.host).borrow_mut().rollback(child.borrow().snapshot);
     
                     resume = Resume::Returned(FAILED);
                     continue;
@@ -218,7 +228,7 @@ impl Executor {
                             parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
                             parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
         
-                            self.host.rollback(child.snapshot);
+                            (*self.host).borrow_mut().rollback(child.snapshot);
         
                             resume = Resume::Returned(FAILED);
                             continue;
@@ -245,6 +255,7 @@ impl Executor {
                 },
             }
         }
+    
     }
 
     pub fn execute_raw(&mut self, code: &Code) -> Output {
@@ -278,6 +289,7 @@ impl Executor {
     }
 
     fn create_child_scope(&self, parent: &CallScope, params: &CallParams) -> CallScope {
+        let host = (*self.host).borrow_mut();
         match params.kind {
             CallKind::Call => {
                 let mut child = CallScope::default();
@@ -288,8 +300,8 @@ impl Executor {
 
                 child.calldata = parent.memory.get_range(params.args_offset, params.args_size).into();
 
-                let code_size = self.host.get_code_size(params.address);
-                child.code = self.host.get_code(params.address, 0, code_size.as_usize()).into();
+                let code_size = host.get_code_size(params.address);
+                child.code = host.get_code(params.address, 0, code_size.as_usize()).into();
                 
                 child.value = params.value;
                 child.gas_limit = params.gas;
@@ -299,7 +311,7 @@ impl Executor {
                 child.ret_size = params.ret_size;
 
                 child.is_staticcall = parent.is_staticcall;    // child succeeds `is_static` flag
-                child.snapshot = self.host.take_snapshot();
+                child.snapshot = host.take_snapshot();
 
                 child
             },

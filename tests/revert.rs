@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use bytes::Bytes;
 use ethereum_types::{U256, Address};
 use evmstar::executor::callstack::CallScope;
@@ -44,6 +47,7 @@ fn get_default_context() -> TxContext {
 #[test]
 fn test_revert_one_level() {
     let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
 
     let mut builder = Code::builder();
     let code = builder
@@ -63,7 +67,7 @@ fn test_revert_one_level() {
     scope.gas_limit = gas_limit;
     scope.gas_left = gas_limit;
     
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let output = executor.execute_raw_with(scope);
     let data = decode("00000000000000000000000000000000000000000000000000000000000000aa").unwrap();
 

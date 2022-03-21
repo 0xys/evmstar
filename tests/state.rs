@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use bytes::Bytes;
 use ethereum_types::{U256, Address};
 use hex_literal::hex;
@@ -47,7 +50,8 @@ fn get_default_context() -> TxContext {
 
 #[test]
 fn test_extcodehash_cold() {
-    let mut host = StatefulHost::new_with(get_default_context());
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
     let address = Address::from_low_u64_be(0x123456);
     let account = Account {
         nonce: 0,
@@ -56,9 +60,9 @@ fn test_extcodehash_cold() {
         balance: U256::from(0),
         storage: Default::default()
     };
-    host.add_account(address, account);
+    (*host).borrow_mut().add_account(address, account);
 
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -84,7 +88,8 @@ fn test_extcodehash_cold() {
 
 #[test]
 fn test_extcodehash_warm() {
-    let mut host = StatefulHost::new_with(get_default_context());
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
     let address = Address::from_low_u64_be(0x123456);
     let account = Account {
         nonce: 0,
@@ -93,9 +98,9 @@ fn test_extcodehash_warm() {
         balance: U256::from(0),
         storage: Default::default()
     };
-    host.add_account(address, account);
+    (*host).borrow_mut().add_account(address, account);
 
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -158,8 +163,9 @@ fn test_sstore_of(revision: Revision) {
 }
 
 fn test_sstore_legacy_logic(code: Vec<u8>, gas_used: i64, gas_refund: i64, original: usize, revision: Revision) {
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(default_address(), U256::zero(), U256::from(original));
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().debug_set_storage(default_address(), U256::zero(), U256::from(original));
 
     let mut builder = Code::builder();
     let code = builder.append(code.as_slice());
@@ -167,7 +173,7 @@ fn test_sstore_legacy_logic(code: Vec<u8>, gas_used: i64, gas_refund: i64, origi
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, revision);
+    let mut executor = Executor::new_with(host.clone(), true, revision);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -194,6 +200,7 @@ fn test_sload() {
 
 fn test_sload_logic(code: &Vec<u8>, gas_used: i64, revision: Revision) {
     let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
 
     let mut builder = Code::builder();
     let code = builder.append(code.as_slice());
@@ -201,7 +208,7 @@ fn test_sload_logic(code: &Vec<u8>, gas_used: i64, revision: Revision) {
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, revision);
+    let mut executor = Executor::new_with(host.clone(), true, revision);
     let output = executor.execute_raw_with(context);
 
     assert_eq!(StatusCode::Success, output.status_code);
@@ -212,6 +219,7 @@ fn test_sload_logic(code: &Vec<u8>, gas_used: i64, revision: Revision) {
 #[test]
 fn test_calldatasize() {
     let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
 
     let mut builder = Code::builder();
     let code = builder.append("3660005260206000f3");
@@ -220,7 +228,7 @@ fn test_calldatasize() {
     context.to = default_address();
     context.calldata = Calldata::from("ffff");
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Shanghai);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Shanghai);
     let output = executor.execute_raw_with(context);
 
     let bytes = Vec::from(hex!("0000000000000000000000000000000000000000000000000000000000000002"));
@@ -232,6 +240,7 @@ fn test_calldatasize() {
 #[test]
 fn test_calldataload() {
     let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
 
     let mut builder = Code::builder();
     let code = builder.append("60003560005260206000f3");
@@ -240,7 +249,7 @@ fn test_calldataload() {
     context.to = default_address();
     context.calldata = Calldata::from("ffff");
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Shanghai);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Shanghai);
     let output = executor.execute_raw_with(context);
 
     let bytes = Vec::from(hex!("ffff000000000000000000000000000000000000000000000000000000000000"));
@@ -252,6 +261,7 @@ fn test_calldataload() {
 #[test]
 fn test_calldataload_2() {
     let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
 
     let mut builder = Code::builder();
 
@@ -272,7 +282,7 @@ fn test_calldataload_2() {
     context.to = default_address();
     context.calldata = Calldata::from("ffff");
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Shanghai);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Shanghai);
     let output = executor.execute_raw_with(context);
 
     let bytes = Vec::from(hex!("eeee0000000000000000000000000000ffff0000000000000000000000000000"));
@@ -284,6 +294,7 @@ fn test_calldataload_2() {
 #[test]
 fn test_calldatacopy() {
     let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
 
     let mut builder = Code::builder();
 
@@ -299,7 +310,7 @@ fn test_calldatacopy() {
     context.to = default_address();
     context.calldata = Calldata::from("ffff");
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Berlin);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Berlin);
     let output = executor.execute_raw_with(context);
 
     let bytes = Vec::from(hex!("ffff000000000000000000000000000000000000000000000000000000000000"));
@@ -311,6 +322,7 @@ fn test_calldatacopy() {
 #[test]
 fn test_calldatacopy_2() {
     let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
 
     let mut builder = Code::builder();
 
@@ -331,7 +343,7 @@ fn test_calldatacopy_2() {
     context.to = default_address();
     context.calldata = Calldata::from("ffff");
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Berlin);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Berlin);
     let output = executor.execute_raw_with(context);
 
     let bytes = Vec::from(hex!("eeee0000000000000000000000000000ffff0000000000000000000000000000"));
@@ -343,6 +355,7 @@ fn test_calldatacopy_2() {
 #[test]
 fn test_codesize() {
     let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
 
     let mut builder = Code::builder();
 
@@ -358,7 +371,7 @@ fn test_codesize() {
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Berlin);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Berlin);
     let output = executor.execute_raw_with(context);
 
     let bytes = Vec::from(hex!("0000000000000000000000000000000000000000000000000000000000000009"));
@@ -370,6 +383,7 @@ fn test_codesize() {
 #[test]
 fn test_codecopy() {
     let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
 
     let mut builder = Code::builder();
 
@@ -384,7 +398,7 @@ fn test_codecopy() {
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Berlin);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Berlin);
     let output = executor.execute_raw_with(context);
 
     let bytes = Vec::from(hex!("600c600060003960206000f30000000000000000000000000000000000000000"));
@@ -396,6 +410,7 @@ fn test_codecopy() {
 #[test]
 fn test_codecopy_out_of_bounds() {
     let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
 
     let mut builder = Code::builder();
 
@@ -412,7 +427,7 @@ fn test_codecopy_out_of_bounds() {
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, Revision::Berlin);
+    let mut executor = Executor::new_with(host.clone(), true, Revision::Berlin);
     let output = executor.execute_raw_with(context);
 
     let bytes = Vec::from(hex!("6040600060003960406000f300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"));
@@ -433,8 +448,9 @@ fn default_contract_address() -> Address {
 }
 
 fn test_extcodesize_logic(gas_used: i64, revision: Revision){
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.add_account(default_contract_address(), default_contract());
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().add_account(default_contract_address(), default_contract());
 
     let mut builder = Code::builder();
 
@@ -458,7 +474,7 @@ fn test_extcodesize_logic(gas_used: i64, revision: Revision){
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, revision);
+    let mut executor = Executor::new_with(host.clone(), true, revision);
     let output = executor.execute_raw_with(context);
 
     let bytes = Vec::from(hex!("0000000000000000000000000000000000000000000000000000000000000004"));
@@ -484,8 +500,9 @@ fn test_extcodesize(){
 }
 
 fn test_extcodecopy_logic(gas_used: i64, revision: Revision) {
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.add_account(default_contract_address(), default_contract());
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().add_account(default_contract_address(), default_contract());
 
     let mut builder = Code::builder();
 
@@ -508,7 +525,7 @@ fn test_extcodecopy_logic(gas_used: i64, revision: Revision) {
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, revision);
+    let mut executor = Executor::new_with(host.clone(), true, revision);
     let output = executor.execute_raw_with(context);
 
     let bytes = Vec::from(hex!("aabbccdd00000000000000000000000000000000000000000000000000000000"));
@@ -535,8 +552,9 @@ fn test_extcodecopy() {
 
 
 fn test_extcodehash_logic(gas_used: i64, revision: Revision) {
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.add_account(default_contract_address(), default_contract());
+    let host = StatefulHost::new_with(get_default_context());
+    let host = Rc::new(RefCell::new(host));
+    (*host).borrow_mut().add_account(default_contract_address(), default_contract());
 
     let mut builder = Code::builder();
 
@@ -560,7 +578,7 @@ fn test_extcodehash_logic(gas_used: i64, revision: Revision) {
     context.code = code.clone();
     context.to = default_address();
 
-    let mut executor = Executor::new_with(Box::new(host), true, revision);
+    let mut executor = Executor::new_with(host.clone(), true, revision);
     let output = executor.execute_raw_with(context);
 
     let bytes = Vec::from(hex!("000000000000000000000000000000000000000000000000000000000011eeff"));

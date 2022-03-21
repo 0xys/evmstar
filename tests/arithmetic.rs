@@ -1,3 +1,5 @@
+use std::{rc::Rc, cell::RefCell};
+
 use bytes::Bytes;
 
 use evmstar::host::host::TransientHost;
@@ -22,7 +24,8 @@ fn consumed_gas(amount: i64) -> i64 {
 #[test]
 pub fn test_add() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -52,7 +55,8 @@ pub fn test_add() {
 #[test]
 pub fn test_add_overflow() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let u256_max = decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
@@ -84,7 +88,8 @@ pub fn test_add_overflow() {
 #[test]
 pub fn test_sub() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -114,7 +119,8 @@ pub fn test_sub() {
 #[test]
 pub fn test_sub_underflow() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -144,7 +150,8 @@ pub fn test_sub_underflow() {
 #[test]
 pub fn test_mul() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -174,7 +181,8 @@ pub fn test_mul() {
 #[test]
 pub fn test_mul_overflow() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let u256_max = decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
@@ -207,7 +215,8 @@ pub fn test_mul_overflow() {
 #[test]
 pub fn test_div() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let u256_max = decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
@@ -239,7 +248,8 @@ pub fn test_div() {
 #[test]
 pub fn test_sdiv() {
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let bn = decode("0000000000000000000000ffffffffffffffffffffffffffffffffffffffffff").unwrap();
@@ -270,7 +280,8 @@ pub fn test_sdiv() {
 #[test]
 fn test_arith() {   // https://github.com/ethereum/tests/blob/develop/src/GeneralStateTestsFiller/VMTests/vmArithmeticTest/arithFiller.yml
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -288,7 +299,8 @@ fn test_arith() {   // https://github.com/ethereum/tests/blob/develop/src/Genera
 #[test]
 fn test_comparison() {    // from evmordin tests
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -314,7 +326,8 @@ fn test_comparison() {    // from evmordin tests
 #[test]
 fn test_bitwise() {    // from evmordin tests
     let host = TransientHost::new();
-    let mut executor = Executor::new(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
