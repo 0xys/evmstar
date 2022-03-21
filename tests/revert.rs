@@ -1,18 +1,5 @@
-use std::rc::Rc;
-use std::cell::RefCell;
-
-use bytes::Bytes;
 use ethereum_types::{U256, Address};
-use evmstar::executor::callstack::CallScope;
-use hex::decode;
-
-use evmstar::host::stateful::{
-    StatefulHost,
-};
-use evmstar::executor::{
-    executor::Executor,
-};
-#[allow(unused_imports)]
+use evmstar::tester::EvmTester;
 use evmstar::model::{
     code::{
         Code, Append,
@@ -21,14 +8,10 @@ use evmstar::model::{
     evmc::{
         StatusCode, FailureKind,
         TxContext,
-    },
-    revision::Revision,
+    }
 };
 
 fn default_address() -> Address { Address::from_low_u64_be(0xffffeeee) }
-fn consumed_gas(amount: i64, gas_limit: i64) -> i64 {
-    gas_limit - amount
-}
 
 fn get_default_context() -> TxContext {
     TxContext {
@@ -46,9 +29,6 @@ fn get_default_context() -> TxContext {
 
 #[test]
 fn test_revert_one_level() {
-    let host = StatefulHost::new_with(get_default_context());
-    let host = Rc::new(RefCell::new(host));
-
     let mut builder = Code::builder();
     let code = builder
         .append(OpCode::PUSH1)  // 3
@@ -61,20 +41,15 @@ fn test_revert_one_level() {
         .clone(); // = 22124
     
     let gas_limit = 100_000;
-    let mut scope = CallScope::default();
-    scope.code = code;
-    scope.to = default_address();
-    scope.gas_limit = gas_limit;
-    scope.gas_left = gas_limit;
     
-    let mut executor = Executor::new_with_tracing(host.clone());
-    let output = executor.execute_raw_with(scope);
-    let data = decode("00000000000000000000000000000000000000000000000000000000000000aa").unwrap();
-
-    assert_eq!(StatusCode::Failure(FailureKind::Revert), output.status_code);
-    assert_eq!(Bytes::from(data), output.data);
-    assert_eq!(22124, consumed_gas(output.gas_left, gas_limit));
-
-    let value = (*host).borrow().debug_get_storage(default_address(), U256::from(0x01));
-    assert_eq!(U256::from(0x00), value);    // set value is reverted
+    let mut tester = EvmTester::new_with(get_default_context());
+    let result = tester.with_to(default_address())
+        .with_gas_limit(gas_limit)
+        .with_gas_left(gas_limit)
+        .run_code(code);
+    
+    result.expect_status(StatusCode::Failure(FailureKind::Revert))
+        .expect_output("00000000000000000000000000000000000000000000000000000000000000aa")
+        .expect_gas(22124)
+        .expect_storage(default_address(), U256::from(0x01), U256::from(0x00));
 }
