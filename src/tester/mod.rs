@@ -5,7 +5,7 @@ use ethereum_types::{Address, U256};
 use hex::decode;
 
 use crate::{
-    model::{code::Code, evmc::{Output, StatusCode, TxContext}},
+    model::{code::Code, evmc::{Output, StatusCode, TxContext}, revision::Revision},
     executor::{callstack::CallScope, executor::Executor},
     host::stateful::StatefulHost
 };
@@ -97,9 +97,46 @@ impl EvmTester {
         self
     }
 
+    pub fn run(&mut self) -> EvmResult {
+        let mut executor = Executor::new_with_tracing(self.host.clone());
+        
+        let output = executor.execute_raw_with(self.scope.clone());
+        EvmResult{
+            host: self.host.clone(),
+            scope: self.scope.clone(),
+            output
+        }
+    }
+
+    pub fn run_as(&mut self, revision: Revision) -> EvmResult {
+        let mut executor = Executor::new_with_tracing(self.host.clone());
+        executor.set_revision(revision);
+
+        let output = executor.execute_raw_with(self.scope.clone());
+        EvmResult{
+            host: self.host.clone(),
+            scope: self.scope.clone(),
+            output
+        }
+    }
+
     pub fn run_code(&mut self, code: Code) -> EvmResult {
         self.scope.code = code;
         let mut executor = Executor::new_with_tracing(self.host.clone());
+
+        let output = executor.execute_raw_with(self.scope.clone());
+        EvmResult{
+            host: self.host.clone(),
+            scope: self.scope.clone(),
+            output
+        }
+    }
+
+    pub fn run_code_as(&mut self, code: Code, revision: Revision) -> EvmResult {
+        self.scope.code = code;
+        let mut executor = Executor::new_with_tracing(self.host.clone());
+        executor.set_revision(revision);
+
         let output = executor.execute_raw_with(self.scope.clone());
         EvmResult{
             host: self.host.clone(),

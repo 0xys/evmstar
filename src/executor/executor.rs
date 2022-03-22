@@ -84,6 +84,10 @@ impl Executor {
         }
     }
 
+    pub fn set_revision(&mut self, revision: Revision) {
+        self.revision = revision;
+    }
+
     pub fn call_message(&mut self, msg: &Message) -> Output {
         (*self.host).borrow_mut().call(msg)
     }
