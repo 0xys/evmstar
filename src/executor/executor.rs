@@ -223,6 +223,8 @@ impl Executor {
                                 Some(c) => c,
                             };
                             let child = child.borrow_mut();
+                            (*self.host).borrow_mut().rollback(child.snapshot); // revert the state to previous snapshot
+
                             if self.callstack.is_empty() {
                                 return Output::new_revert(gas_left, data);
                             }
@@ -232,7 +234,6 @@ impl Executor {
                             parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
                             parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
         
-                            (*self.host).borrow_mut().rollback(child.snapshot);
         
                             resume = Resume::Returned(FAILED);
                             continue;

@@ -29,12 +29,14 @@ fn get_default_context() -> TxContext {
 
 #[test]
 fn test_revert_one_level() {
+    let key = 0x01;
+
     let mut builder = Code::builder();
     let code = builder
         .append(OpCode::PUSH1)  // 3
         .append(0xdd)           // data
         .append(OpCode::PUSH1)  // 3
-        .append(0x00)           // offset
+        .append(key)           // offset
         .append(OpCode::SSTORE) // 20000 + 2100
         .append("60aa60005260206000") // 3*4 + 6 = 18
         .append(OpCode::REVERT) // 0
@@ -51,5 +53,35 @@ fn test_revert_one_level() {
     result.expect_status(StatusCode::Failure(FailureKind::Revert))
         .expect_output("00000000000000000000000000000000000000000000000000000000000000aa")
         .expect_gas(22124)
-        .expect_storage(default_address(), U256::from(0x01), U256::from(0x00));
+        .expect_storage(default_address(), U256::from(key), U256::from(0x00));
+}
+
+#[test]
+fn test_revert_one_level_with_original() {
+    let key = 0x01;
+
+    let mut builder = Code::builder();
+    let code = builder
+        .append(OpCode::PUSH1)  // 3
+        .append(0xdd)           // data
+        .append(OpCode::PUSH1)  // 3
+        .append(key)           // offset
+        .append(OpCode::SSTORE) // 2900 + 2100
+        .append("60aa60005260206000") // 3*4 + 6 = 18
+        .append(OpCode::REVERT) // 0
+        .clone(); // = 5024
+    
+    let gas_limit = 100_000;
+    
+    let mut tester = EvmTester::new_with(get_default_context());
+    let result = tester.with_to(default_address())
+        .with_gas_limit(gas_limit)
+        .with_gas_left(gas_limit)
+        .with_storage(default_address(), U256::from(key), U256::from(0xaa))
+        .run_code(code);
+    
+    result.expect_status(StatusCode::Failure(FailureKind::Revert))
+        .expect_output("00000000000000000000000000000000000000000000000000000000000000aa")
+        .expect_gas(5024)
+        .expect_storage(default_address(), U256::from(key), U256::from(0xaa));
 }
