@@ -92,6 +92,11 @@ impl EvmTester {
         self
     }
 
+    pub fn with_storage_always_warm<'a>(&'a mut self) -> &'a mut Self {
+        (*self.host).borrow_mut().debug_set_storage_as_warm();
+        self
+    }
+
     pub fn with_contract_deployed<'a>(&'a mut self, contract_address: &str, code: Code, balance: U256) -> &'a mut Self {
         (*self.host).borrow_mut().debug_deploy_contract(contract_address, code, balance);
         self
