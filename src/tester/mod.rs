@@ -5,7 +5,7 @@ use ethereum_types::{Address, U256};
 use hex::decode;
 
 use crate::{
-    model::{code::Code, evmc::{Output, StatusCode, TxContext}, revision::Revision},
+    model::{code::Code, evmc::{Output, StatusCode, TxContext, AccessList}, revision::Revision},
     executor::{callstack::CallScope, executor::Executor},
     host::stateful::StatefulHost
 };
@@ -13,13 +13,16 @@ use crate::{
 #[derive(Clone)]
 pub struct EvmTester {
     scope: CallScope,
-    host: Rc<RefCell<StatefulHost>>
+    host: Rc<RefCell<StatefulHost>>,
+
+    is_execution_cost_enabled: bool,
+    access_list: AccessList,
 }
 
 pub struct EvmResult {
     host: Rc<RefCell<StatefulHost>>,
     scope: CallScope,
-    output: Output
+    output: Output,
 }
 
 impl EvmResult {
@@ -53,7 +56,9 @@ impl EvmTester {
         let host = Rc::new(RefCell::new(host));
         EvmTester{
             scope: CallScope::default(),
-            host
+            host,
+            is_execution_cost_enabled: false,
+            access_list: AccessList::default(),
         }
     }
 
@@ -62,7 +67,9 @@ impl EvmTester {
         let host = Rc::new(RefCell::new(host));
         EvmTester{
             scope: CallScope::default(),
-            host
+            host,
+            is_execution_cost_enabled: false,
+            access_list: AccessList::default(),
         }
     }
 
@@ -102,22 +109,30 @@ impl EvmTester {
         self
     }
 
+    pub fn enable_execution_cost<'a>(&'a mut self) -> &'a mut Self {
+        self.is_execution_cost_enabled = true;
+        self
+    }
+
     pub fn run(&mut self) -> EvmResult {
-        let mut executor = Executor::new_with_tracing(self.host.clone());
-        
-        let output = executor.execute_raw_with(self.scope.clone());
-        EvmResult{
-            host: self.host.clone(),
-            scope: self.scope.clone(),
-            output
-        }
+        self.run_as(Revision::Shanghai)
     }
 
     pub fn run_as(&mut self, revision: Revision) -> EvmResult {
-        let mut executor = Executor::new_with_tracing(self.host.clone());
+        let mut executor = 
+            if !self.is_execution_cost_enabled {
+                Executor::new_with_tracing(self.host.clone())
+            } else {
+                Executor::new_with_execution_cost(self.host.clone(), true, revision)
+            };
         executor.set_revision(revision);
 
-        let output = executor.execute_raw_with(self.scope.clone());
+        let output = 
+            if self.access_list.is_empty() {
+                executor.execute_raw_with(self.scope.clone())
+            } else {
+                executor.execute_with_access_list(self.scope.clone(), self.access_list.clone())
+            };
         EvmResult{
             host: self.host.clone(),
             scope: self.scope.clone(),
@@ -127,26 +142,11 @@ impl EvmTester {
 
     pub fn run_code(&mut self, code: Code) -> EvmResult {
         self.scope.code = code;
-        let mut executor = Executor::new_with_tracing(self.host.clone());
-
-        let output = executor.execute_raw_with(self.scope.clone());
-        EvmResult{
-            host: self.host.clone(),
-            scope: self.scope.clone(),
-            output
-        }
+        self.run()
     }
 
     pub fn run_code_as(&mut self, code: Code, revision: Revision) -> EvmResult {
         self.scope.code = code;
-        let mut executor = Executor::new_with_tracing(self.host.clone());
-        executor.set_revision(revision);
-
-        let output = executor.execute_raw_with(self.scope.clone());
-        EvmResult{
-            host: self.host.clone(),
-            scope: self.scope.clone(),
-            output
-        }
+        self.run_as(revision)
     }
 }
