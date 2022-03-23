@@ -93,6 +93,11 @@ impl EvmTester {
         self.scope.gas_left = gas_left;
         self
     }
+    pub fn with_default_gas<'a>(&'a mut self) -> &'a mut Self {
+        self.scope.gas_limit = i64::max_value();
+        self.scope.gas_left = i64::max_value();
+        self
+    }
 
     pub fn with_storage<'a>(&'a mut self, address: Address, key: U256, value: U256) -> &'a mut Self {
         (*self.host).borrow_mut().debug_set_storage(address, key, value);
@@ -111,6 +116,15 @@ impl EvmTester {
 
     pub fn enable_execution_cost<'a>(&'a mut self) -> &'a mut Self {
         self.is_execution_cost_enabled = true;
+        self
+    }
+
+    pub fn add_accessed_account<'a>(&'a mut self, address: Address) -> &'a mut Self {
+        self.access_list.add_account(address);
+        self
+    }
+    pub fn add_accessed_storage<'a>(&'a mut self, address: Address, key: U256) -> &'a mut Self {
+        self.access_list.add_storage(address, key);
         self
     }
 
