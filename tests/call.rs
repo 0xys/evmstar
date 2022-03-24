@@ -190,3 +190,127 @@ fn test_remote_address() {
         .expect_output("000000000000000000000000cc00000100000000000000000000000000000000")
         .expect_gas(2647);
 }
+
+fn scope_code(depth: u64) -> Code {
+    let mut sstore = Code::builder()
+        .append(OpCode::PUSH1)
+        .append(U256::from(depth))  // value
+        .append(OpCode::PUSH1)
+        .append(0x00)   // key
+        .append(OpCode::SSTORE)
+        .clone();
+
+    let mut scope_code = 
+        if depth < 12 {
+            Code::builder()
+                .append(OpCode::PUSH1)
+                .append(0x20)   // ret_size
+                .append(OpCode::PUSH1)
+                .append(0x00)   // ret_offset
+                .append(OpCode::PUSH1)
+                .append(0x00)   // args_size
+                .append(OpCode::PUSH1)
+                .append(0x00)   // args_offset
+                .append(OpCode::PUSH32)
+                .append(U256::from(0x00))   // value
+                .append(OpCode::PUSH20)
+                .append(Address::from_low_u64_be(depth))   // address
+                .append(OpCode::GAS)
+                .append(OpCode::CALL)
+                .clone()
+        } else {
+            Code::builder()
+                .append(0x20)
+                .append(OpCode::PUSH1)
+                .append(0x00)
+                .append(OpCode::RETURN)
+                .clone()
+        };
+    
+    let code = Code::builder()
+        .append_code(&mut sstore)
+        .append_code(&mut scope_code)
+
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::MLOAD)
+
+        .append(OpCode::PUSH1)
+        .append(U256::from(depth))
+        .append(OpCode::ADD)
+
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::MSTORE)
+
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::RETURN)
+        .clone();
+    code
+}
+
+#[test]
+fn test_deep() {
+    let code = Code::builder()
+        .append(OpCode::PUSH1)
+        .append(0x20)   // ret_size
+        .append(OpCode::PUSH1)
+        .append(0x00)   // ret_offset
+        .append(OpCode::PUSH1)
+        .append(0x00)   // args_size
+        .append(OpCode::PUSH1)
+        .append(0x00)   // args_offset
+        .append(OpCode::PUSH32)
+        .append(U256::from(0x00))   // value
+        .append(OpCode::PUSH20)
+        .append(Address::from_low_u64_be(1))   // address
+        .append(OpCode::GAS)
+        // .append(OpCode::PUSH32)
+        // .append(U256::from(100_000))    // gas
+        .append(OpCode::CALL)
+        .append(OpCode::PUSH1)
+        .append(0x20)   // ret_size
+        .append(OpCode::PUSH1)
+        .append(0x00)   // ret_offset
+        .append(OpCode::RETURN)
+        .clone();
+    
+    let mut tester = EvmTester::new_with(get_default_context());
+    let result = tester
+        .with_default_gas()
+        .with_contract_deployed2(Address::from_low_u64_be(1), scope_code(1), U256::zero())
+        .with_contract_deployed2(Address::from_low_u64_be(2), scope_code(2), U256::zero())
+        .with_contract_deployed2(Address::from_low_u64_be(3), scope_code(3), U256::zero())
+        .with_contract_deployed2(Address::from_low_u64_be(4), scope_code(4), U256::zero())
+        .with_contract_deployed2(Address::from_low_u64_be(5), scope_code(5), U256::zero())
+        .with_contract_deployed2(Address::from_low_u64_be(6), scope_code(6), U256::zero())
+        .with_contract_deployed2(Address::from_low_u64_be(7), scope_code(7), U256::zero())
+        .with_contract_deployed2(Address::from_low_u64_be(8), scope_code(8), U256::zero())
+        .with_contract_deployed2(Address::from_low_u64_be(9), scope_code(9), U256::zero())
+        .with_contract_deployed2(Address::from_low_u64_be(10), scope_code(10), U256::zero())
+        .with_contract_deployed2(Address::from_low_u64_be(11), scope_code(11), U256::zero())
+        .with_contract_deployed2(Address::from_low_u64_be(12), scope_code(12), U256::zero())
+        .run_code(code);
+
+    
+    result
+        .expect_status(StatusCode::Success)
+        // .expect_output("000000000000000000000000000000000000000000000000000000000000004e")  // 0x4e = 78 = sum(1..12)
+        .expect_storage(Address::from_low_u64_be(1), U256::from(0x00), U256::from(1))
+        // .expect_storage(Address::from_low_u64_be(2), U256::from(0x00), U256::from(2))
+        // .expect_storage(Address::from_low_u64_be(3), U256::from(0x00), U256::from(3))
+        // .expect_storage(Address::from_low_u64_be(4), U256::from(0x00), U256::from(4))
+        // .expect_storage(Address::from_low_u64_be(5), U256::from(0x00), U256::from(5))
+        // .expect_storage(Address::from_low_u64_be(6), U256::from(0x00), U256::from(6))
+        // .expect_storage(Address::from_low_u64_be(7), U256::from(0x00), U256::from(7))
+        // .expect_storage(Address::from_low_u64_be(8), U256::from(0x00), U256::from(8))
+        // .expect_storage(Address::from_low_u64_be(9), U256::from(0x00), U256::from(9))
+        // .expect_storage(Address::from_low_u64_be(10), U256::from(0x00), U256::from(10))
+        // .expect_storage(Address::from_low_u64_be(11), U256::from(0x00), U256::from(11))
+        // .expect_storage(Address::from_low_u64_be(12), U256::from(0x00), U256::from(12))
+        ;
+    
+}

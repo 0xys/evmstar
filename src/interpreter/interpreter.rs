@@ -879,6 +879,12 @@ impl Interpreter {
                 stack.push(len)?;
                 Ok(None)
             },
+            OpCode::GAS => {
+                Self::consume_constant_gas(&mut scope.gas_left, 2)?;
+                let len = U256::from(scope.gas_left);
+                stack.push(len)?;
+                Ok(None)
+            },
             OpCode::JUMPDEST => {
                 Self::consume_constant_gas(&mut scope.gas_left, 1)?;
                 Ok(None)

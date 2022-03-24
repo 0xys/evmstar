@@ -113,6 +113,10 @@ impl EvmTester {
         (*self.host).borrow_mut().debug_deploy_contract(contract_address, code, balance);
         self
     }
+    pub fn with_contract_deployed2<'a>(&'a mut self, contract_address2: Address, code: Code, balance: U256) -> &'a mut Self {
+        (*self.host).borrow_mut().debug_deploy_contract2(contract_address2, code, balance);
+        self
+    }
 
     pub fn enable_execution_cost<'a>(&'a mut self) -> &'a mut Self {
         self.is_execution_cost_enabled = true;
