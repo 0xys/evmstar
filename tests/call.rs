@@ -193,12 +193,12 @@ fn test_remote_address() {
 
 fn scope_code(depth: u64) -> Code {
     let mut sstore = Code::builder()
-        .append(OpCode::PUSH1)
+        .append(OpCode::PUSH32) // 3
         .append(U256::from(depth))  // value
-        .append(OpCode::PUSH1)
+        .append(OpCode::PUSH1) // 3
         .append(0x00)   // key
-        .append(OpCode::SSTORE)
-        .clone();
+        .append(OpCode::SSTORE) // 20000(init to non-zero) + 2100(cold)
+        .clone();   // 22106
 
     let mut scope_code = 
         if depth < 12 {
@@ -214,42 +214,46 @@ fn scope_code(depth: u64) -> Code {
                 .append(OpCode::PUSH32)
                 .append(U256::from(0x00))   // value
                 .append(OpCode::PUSH20)
-                .append(Address::from_low_u64_be(depth))   // address
+                .append(address(depth))   // address
                 .append(OpCode::GAS)
                 .append(OpCode::CALL)
-                .clone()
+                .clone()    // 3 * 6 + 2 + call = 20 + call[=3+2600] = 2623
         } else {
             Code::builder()
+                .append(OpCode::PUSH1)  // 3
                 .append(0x20)
-                .append(OpCode::PUSH1)
+                .append(OpCode::PUSH1)  // 3
                 .append(0x00)
-                .append(OpCode::RETURN)
-                .clone()
+                .append(OpCode::RETURN) // 3 = memory expansion
+                .clone() // = 9
         };
     
     let code = Code::builder()
-        .append_code(&mut sstore)
+        .append_code(&mut sstore)// 22106
         .append_code(&mut scope_code)
 
-        .append(OpCode::PUSH1)
+        .append(OpCode::PUSH1)// 3
         .append(0x00)
-        .append(OpCode::MLOAD)
+        .append(OpCode::MLOAD)// 3
 
-        .append(OpCode::PUSH1)
+        .append(OpCode::PUSH32)// 3
         .append(U256::from(depth))
-        .append(OpCode::ADD)
+        .append(OpCode::ADD)// 3
 
-        .append(OpCode::PUSH1)
+        .append(OpCode::PUSH1) // 3
         .append(0x00)
-        .append(OpCode::MSTORE)
+        .append(OpCode::MSTORE)// 3
 
-        .append(OpCode::PUSH1)
+        .append(OpCode::PUSH1) // 3
         .append(0x20)
-        .append(OpCode::PUSH1)
+        .append(OpCode::PUSH1) // 3
         .append(0x00)
         .append(OpCode::RETURN)
-        .clone();
+        .clone(); // 24 + 22106 + 2623 for 0..11
     code
+}
+fn address(num: u64) -> Address {
+    Address::from_low_u64_be(0xeeeeee00 + num)
 }
 
 #[test]
@@ -266,51 +270,33 @@ fn test_deep() {
         .append(OpCode::PUSH32)
         .append(U256::from(0x00))   // value
         .append(OpCode::PUSH20)
-        .append(Address::from_low_u64_be(1))   // address
-        .append(OpCode::GAS)
-        // .append(OpCode::PUSH32)
-        // .append(U256::from(100_000))    // gas
+        .append(address(0))   // address
+        .append(OpCode::GAS)    // 2
         .append(OpCode::CALL)
         .append(OpCode::PUSH1)
         .append(0x20)   // ret_size
         .append(OpCode::PUSH1)
         .append(0x00)   // ret_offset
         .append(OpCode::RETURN)
-        .clone();
+        .clone();   // 3 * 6 + call + 3 * 2 + 2 =  24 + call[=3+2600] + 2 = 2629
     
     let mut tester = EvmTester::new_with(get_default_context());
-    let result = tester
-        .with_default_gas()
-        .with_contract_deployed2(Address::from_low_u64_be(1), scope_code(1), U256::zero())
-        .with_contract_deployed2(Address::from_low_u64_be(2), scope_code(2), U256::zero())
-        .with_contract_deployed2(Address::from_low_u64_be(3), scope_code(3), U256::zero())
-        .with_contract_deployed2(Address::from_low_u64_be(4), scope_code(4), U256::zero())
-        .with_contract_deployed2(Address::from_low_u64_be(5), scope_code(5), U256::zero())
-        .with_contract_deployed2(Address::from_low_u64_be(6), scope_code(6), U256::zero())
-        .with_contract_deployed2(Address::from_low_u64_be(7), scope_code(7), U256::zero())
-        .with_contract_deployed2(Address::from_low_u64_be(8), scope_code(8), U256::zero())
-        .with_contract_deployed2(Address::from_low_u64_be(9), scope_code(9), U256::zero())
-        .with_contract_deployed2(Address::from_low_u64_be(10), scope_code(10), U256::zero())
-        .with_contract_deployed2(Address::from_low_u64_be(11), scope_code(11), U256::zero())
-        .with_contract_deployed2(Address::from_low_u64_be(12), scope_code(12), U256::zero())
-        .run_code(code);
+    tester.with_default_gas();
 
+    for i in 0..12 {
+        tester.with_contract_deployed2(address(i), scope_code(i+1), U256::zero());
+    }
+    let result = tester.run_code(code);
     
-    result
-        .expect_status(StatusCode::Success)
-        // .expect_output("000000000000000000000000000000000000000000000000000000000000004e")  // 0x4e = 78 = sum(1..12)
-        .expect_storage(Address::from_low_u64_be(1), U256::from(0x00), U256::from(1))
-        // .expect_storage(Address::from_low_u64_be(2), U256::from(0x00), U256::from(2))
-        // .expect_storage(Address::from_low_u64_be(3), U256::from(0x00), U256::from(3))
-        // .expect_storage(Address::from_low_u64_be(4), U256::from(0x00), U256::from(4))
-        // .expect_storage(Address::from_low_u64_be(5), U256::from(0x00), U256::from(5))
-        // .expect_storage(Address::from_low_u64_be(6), U256::from(0x00), U256::from(6))
-        // .expect_storage(Address::from_low_u64_be(7), U256::from(0x00), U256::from(7))
-        // .expect_storage(Address::from_low_u64_be(8), U256::from(0x00), U256::from(8))
-        // .expect_storage(Address::from_low_u64_be(9), U256::from(0x00), U256::from(9))
-        // .expect_storage(Address::from_low_u64_be(10), U256::from(0x00), U256::from(10))
-        // .expect_storage(Address::from_low_u64_be(11), U256::from(0x00), U256::from(11))
-        // .expect_storage(Address::from_low_u64_be(12), U256::from(0x00), U256::from(12))
-        ;
-    
+    result.expect_status(StatusCode::Success);
+    for i in 0..12 {
+        result.expect_storage(address(i), U256::zero(), U256::from(i+1));
+    }
+    result.expect_output("0000000000000000000000000000000000000000000000000000000000000042"); // 0x42 = 66 = 1 + 2 + ... + 11)
+    result.expect_gas_refund(0);
+
+    // 2629
+    //  + 11 * (24 + 22106 + 2623) = 272283
+    //  + 22106 + 9
+    result.expect_gas(297027);
 }
