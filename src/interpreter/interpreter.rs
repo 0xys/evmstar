@@ -1047,6 +1047,9 @@ impl Interpreter {
                     ret_size,
                 };
 
+                print!("called: {:?}\n", params);
+                print!("called contract code {:?}\n", host.get_code(address, 0, 100));
+
                 Ok(Some(Interrupt::Call(params)))
             },
             OpCode::CALLCODE => {
@@ -1152,7 +1155,11 @@ impl Interpreter {
             //     Ok(None)
             // },
 
-            _ => Ok(None)
+            _ => {
+                let mes = format!("unknown opcode {:?}", *opcode);
+                println!("{}", mes);
+                Ok(None)
+            }
         }
     }
 

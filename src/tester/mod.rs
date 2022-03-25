@@ -94,8 +94,8 @@ impl EvmTester {
         self
     }
     pub fn with_default_gas<'a>(&'a mut self) -> &'a mut Self {
-        self.scope.gas_limit = i64::max_value();
-        self.scope.gas_left = i64::max_value();
+        self.scope.gas_limit = i32::max_value() as i64;
+        self.scope.gas_left = i32::max_value() as i64;
         self
     }
 
