@@ -191,7 +191,7 @@ fn test_remote_address() {
         .expect_gas(2647);
 }
 
-fn scope_code(depth: u64) -> Code {
+fn scope_code(depth: u64, max_depth: u64) -> Code {
     let mut sstore = Code::builder()
         .append(OpCode::PUSH32) // 3
         .append(U256::from(depth))  // value
@@ -201,7 +201,7 @@ fn scope_code(depth: u64) -> Code {
         .clone();   // 22106
 
     let mut scope_code = 
-        if depth < 12 {
+        if depth < max_depth {
             Code::builder()
                 .append(OpCode::PUSH1)
                 .append(0x20)   // ret_size
@@ -283,20 +283,23 @@ fn test_deep() {
     let mut tester = EvmTester::new_with(get_default_context());
     tester.with_default_gas();
 
-    for i in 0..12 {
-        tester.with_contract_deployed2(address(i), scope_code(i+1), U256::zero());
+
+    let max_depth = 50;
+
+    for i in 0..max_depth {
+        tester.with_contract_deployed2(address(i), scope_code(i+1, max_depth), U256::zero());
     }
     let result = tester.run_code(code);
     
     result.expect_status(StatusCode::Success);
-    for i in 0..12 {
+    for i in 0..max_depth {
         result.expect_storage(address(i), U256::zero(), U256::from(i+1));
     }
-    result.expect_output("0000000000000000000000000000000000000000000000000000000000000042"); // 0x42 = 66 = 1 + 2 + ... + 11)
+    //result.expect_output("0000000000000000000000000000000000000000000000000000000000000042"); // 0x42 = 66 = 1 + 2 + ... + 11)
     result.expect_gas_refund(0);
 
     // 2629
     //  + 11 * (24 + 22106 + 2623) = 272283
     //  + 22106 + 9
-    result.expect_gas(297027);
+    result.expect_gas(2629 + (max_depth as i64 - 1) * (24 + 22106 + 2623) + 22106 + 9);
 }
