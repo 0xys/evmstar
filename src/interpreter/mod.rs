@@ -21,9 +21,6 @@ pub enum Interrupt {
     Call(CallParams),
 
     Exit(i64, Bytes, ExitKind),
-    // Return(i64, Bytes),
-    // Stop(i64),
-    // Revert(i64, Bytes),
 }
 
 #[derive(Clone, Debug, PartialEq, Copy)]
