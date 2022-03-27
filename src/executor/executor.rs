@@ -223,7 +223,7 @@ impl Executor {
                                 },
                             }
                         },
-                        _ => panic!("")
+                        _ => panic!("unknown interrupt")
                     }
                     resume = self.handle_interrupt(&interrupt);
                 },
