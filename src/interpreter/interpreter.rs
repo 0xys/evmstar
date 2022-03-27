@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use ethereum_types::{
     U256, U512
 };
@@ -33,7 +34,7 @@ use crate::utils::{
     address_to_u256, u256_to_address,
 };
 
-use super::{CallParams, CallKind};
+use super::{CallParams, CallKind, ExitKind};
 
 #[derive(Clone, Debug)]
 pub struct Interpreter {
@@ -82,7 +83,7 @@ impl Interpreter {
 
             let op_byte = match scope.code.0.get(scope.pc) {
                 Some(num) => *num,
-                None => return Ok(Interrupt::Stop(scope.gas_left))
+                None => return Ok(Interrupt::Exit(scope.gas_left, Bytes::default(), ExitKind::Stop))
             };
 
             if let Some(opcode) = OpCode::from_u8(op_byte) {
@@ -156,7 +157,7 @@ impl Interpreter {
 
         match opcode {
             OpCode::STOP => {
-                Ok(Some(Interrupt::Stop(scope.gas_left)))
+                Ok(Some(Interrupt::Exit(scope.gas_left, Bytes::default(), ExitKind::Stop)))
             },
             OpCode::ADD => {
                 Self::consume_constant_gas(&mut scope.gas_left, 3)?;
@@ -1078,7 +1079,7 @@ impl Interpreter {
                 let (gas_consumed, data) = ret(offset, size, memory, scope.gas_left)?;
                 scope.gas_left -= gas_consumed;
                 exec_context.return_data_buffer = data.clone();
-                Ok(Some(Interrupt::Return(scope.gas_left, data)))
+                Ok(Some(Interrupt::Exit(scope.gas_left, data, ExitKind::Return)))
             },
 
             OpCode::DELEGATECALL => {
@@ -1141,7 +1142,7 @@ impl Interpreter {
                 let (gas_consumed, data) = ret(offset, size, memory, scope.gas_left)?;
                 scope.gas_left -= gas_consumed;
                 exec_context.return_data_buffer = data.clone();
-                Ok(Some(Interrupt::Revert(scope.gas_left, data)))
+                Ok(Some(Interrupt::Exit(scope.gas_left, data, ExitKind::Revert)))
             },
 
             // OpCode::INVALID => {

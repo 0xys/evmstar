@@ -8,7 +8,7 @@ use crate::host::Host;
 use crate::executor::callstack::{
     CallStack, CallScope, ExecutionContext
 };
-use crate::interpreter::{CallParams, CallKind};
+use crate::interpreter::{CallParams, CallKind, ExitKind};
 use crate::interpreter::stack::{Calldata};
 use crate::interpreter::{
     Interrupt,
@@ -37,6 +37,7 @@ pub struct Executor {
 const MAX_CODE_SIZE: usize = 0x6000;
 const SUCCESS: bool = true;
 const FAILED: bool = false;
+
 
 impl Executor {
     pub fn new(host: Rc<RefCell<dyn Host>>) -> Self {
@@ -198,49 +199,17 @@ impl Executor {
                 },
                 Ok(interrupt) => {
                     match interrupt {
-                        Interrupt::Return(gas_left, data) => {
-                            let child = match self.callstack.pop() {
-                                None => panic!("pop from empty callstack is not allowed."),
-                                Some(c) => c,
-                            };
-                            let child = child.borrow_mut();
-                            if self.callstack.is_empty() {
+                        Interrupt::Exit(gas_left, data, exit_kind) => {
+                            if let Some(r) = self.exit_scope(&data, exit_kind) {
+                                resume = r;
+                                continue;
+                            }else{
+                                if exit_kind == ExitKind::Revert {
+                                    return Output::new_revert(gas_left, data);
+                                }
                                 let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
                                 return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
                             }
-                            let parent = self.callstack.peek();
-                            let mut parent = parent.borrow_mut();
-        
-                            parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
-                            parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
-        
-                            resume = Resume::Returned(SUCCESS);
-                            continue;
-                        },
-                        Interrupt::Revert(gas_left, data) => {
-                            let child = match self.callstack.pop() {
-                                None => panic!("pop from empty callstack is not allowed."),
-                                Some(c) => c,
-                            };
-                            let child = child.borrow_mut();
-                            (*self.host).borrow_mut().rollback(child.snapshot); // revert the state to previous snapshot
-
-                            if self.callstack.is_empty() {
-                                return Output::new_revert(gas_left, data);
-                            }
-                            let parent = self.callstack.peek();
-                            let mut parent = parent.borrow_mut();
-        
-                            parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
-                            parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
-        
-        
-                            resume = Resume::Returned(FAILED);
-                            continue;
-                        },
-                        Interrupt::Stop(gas_left) => {
-                            let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
-                            return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, Bytes::default());
                         },
                         Interrupt::Call(params) => {
                             match self.push_child_scope(&params) {
@@ -261,6 +230,34 @@ impl Executor {
             }
         }
     
+    }
+
+    fn exit_scope(&mut self, data: &Bytes, exit_kind: ExitKind) -> Option<Resume> {
+        let child = match self.callstack.pop() {
+            None => panic!("pop from empty callstack is not allowed."),
+            Some(c) => c,
+        };
+        let child = child.borrow_mut();
+
+        if exit_kind == ExitKind::Revert {
+            (*self.host).borrow_mut().rollback(child.snapshot); // revert the state to previous snapshot
+        }
+
+        if self.callstack.is_empty() {
+            return None;
+        }
+        let parent = self.callstack.peek();
+        let mut parent = parent.borrow_mut();
+
+        if exit_kind != ExitKind::Stop {
+            parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
+        }
+        parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
+
+        if exit_kind == ExitKind::Revert {
+            return Some(Resume::Returned(FAILED));
+        }
+        Some(Resume::Returned(SUCCESS))
     }
 
     pub fn execute_raw(&mut self, code: &Code) -> Output {
