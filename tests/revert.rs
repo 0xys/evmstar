@@ -85,3 +85,106 @@ fn test_revert_one_level_with_original() {
         .expect_gas(5024)
         .expect_storage(default_address(), U256::from(key), U256::from(0xaa));
 }
+
+fn scope_code(index: u64) -> Code {
+    let mut sstore = Code::builder()
+        .append(OpCode::PUSH32) // 3
+        .append(U256::from(index))  // value
+        .append(OpCode::PUSH1) // 3
+        .append(0x00)   // key
+        .append(OpCode::SSTORE) // 20000(init to non-zero) + 2100(cold)
+        .clone();   // 22106
+    
+    let mut ret = Code::builder()
+        .append(OpCode::PUSH32)
+        .append(U256::from(index))
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::MSTORE)
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(if index % 2 == 0 { OpCode::RETURN } else { OpCode::REVERT })
+        .clone();
+    
+    let code = Code::builder()
+        .append_code(&mut sstore)
+        .append_code(&mut ret)
+        .clone();
+    code
+}
+
+fn address(num: u64) -> Address {
+    Address::from_low_u64_be(0xeeeeee00 + num)
+}
+fn call_code(address_u64: u64) -> Code {
+    let code = Code::builder()
+        .append(OpCode::PUSH1)
+        .append(0x20)   // ret_size
+        .append(OpCode::PUSH1)
+        .append(0x00)   // ret_offset
+        .append(OpCode::PUSH1)
+        .append(0x00)   // args_size
+        .append(OpCode::PUSH1)
+        .append(0x00)   // args_offset
+        .append(OpCode::PUSH32)
+        .append(U256::from(0x00))   // value
+        .append(OpCode::PUSH20)
+        .append(address(address_u64))   // address
+        .append(OpCode::GAS)    // 2
+        .append(OpCode::CALL)
+
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::MLOAD)  // load from 'sum'
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::MLOAD)  // load from returned data
+        .append(OpCode::ADD)    // add returned data to 'sum'
+
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::MSTORE) // store to 'sum'
+        .clone();
+    code
+}
+
+#[test]
+fn test_multiple_revert() {
+    let mut code = Code::builder();
+
+    let max = 12;
+
+    for i in 0..max {
+        code.append_code(&mut call_code(i as u64));
+    }
+    let code = code
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::RETURN)
+        .clone();
+
+    let mut tester = EvmTester::new_with(get_default_context());
+    tester.with_default_gas();
+
+    for i in 0..max {
+        tester.with_contract_deployed2(address(i), scope_code(i), U256::zero());
+    }
+    let result = tester.run_code(code);
+
+    result.expect_status(StatusCode::Success);
+    for i in 0..max {
+        let expected_value = 
+            if i % 2 == 0 {
+                U256::from(i)
+            }else{
+                U256::zero()
+            };
+        result.expect_storage(address(i), U256::zero(), expected_value);
+    }
+
+    result.expect_output("0000000000000000000000000000000000000000000000000000000000000042"); // 0x42 = 66 = 0 + 1 + 2 + ... + 11)
+}
