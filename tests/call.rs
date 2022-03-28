@@ -283,7 +283,6 @@ fn test_deep() {
     let mut tester = EvmTester::new_with(get_default_context());
     tester.with_default_gas();
 
-
     let max_depth = 50;
 
     for i in 0..max_depth {
