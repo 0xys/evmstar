@@ -195,7 +195,7 @@ fn test_multiple_revert() {
 fn call_code(address_u64: u64) -> Code {
     let code = Code::builder()
         .append(OpCode::PUSH1)
-        .append(0x20)   // ret_size
+        .append(0x00)   // ret_size
         .append(OpCode::PUSH1)
         .append(0x00)   // ret_offset
         .append(OpCode::PUSH1)
@@ -269,6 +269,37 @@ fn callrevert_contract(called_address: u64) -> Code {
         .append(OpCode::REVERT)
         .clone();
     code
+}
+
+#[test]
+fn test_stackitem_after_revert() {
+    let mut tester = EvmTester::new_with(get_default_context());
+    tester.with_default_gas()
+        .with_contract_deployed2(address(1), return_contract(), U256::zero())
+        .with_contract_deployed2(address(2), revert_contract(), U256::zero());
+    
+    let code = Code::builder()
+        .append_code(&mut call_code(1)) // success = push 1
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::MSTORE)
+
+        .append_code(&mut call_code(2)) // revert = push 0
+        .append(OpCode::ISZERO)
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::MSTORE)
+
+        .append(OpCode::PUSH1)
+        .append(0x40)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::RETURN)
+        .clone();
+
+    let result = tester.run_code(code);
+    result.expect_status(StatusCode::Success)
+        .expect_output("00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001"); // 0x01 and 0x00
 }
 
 #[test]
