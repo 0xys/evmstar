@@ -165,6 +165,16 @@ impl StatefulHost {
         let address = Address::from_slice(&dst);
         self.accounts.insert(address, account);
     }
+    pub fn debug_deploy_contract2(&mut self, address: Address, code: Code, balance: U256) {
+        let account = Account {
+            balance,
+            code: code.0.into(),
+            code_hash: U256::from(0x123456),
+            nonce: 0,
+            storage: Default::default(),
+        };
+        self.accounts.insert(address, account);
+    }
 }
 
 #[allow(unused_variables)]
