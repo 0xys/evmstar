@@ -173,8 +173,8 @@ impl Executor {
         let mut resume = Resume::Init;
         loop {
             let interrupt = {
-                let mut current_scope = self.callstack.peek().borrow_mut(); // current scope is top of the callstack.
-                let interrupt = self.interpreter.resume_interpret(resume, &mut current_scope, &mut exec_context, self.host.clone());
+                let current_scope = self.callstack.peek_mut().unwrap(); // current scope is top of the callstack.
+                let interrupt = self.interpreter.resume_interpret(resume, &mut current_scope.borrow_mut(), &mut exec_context, self.host.clone());
                 interrupt
             };
             
@@ -234,23 +234,23 @@ impl Executor {
     }
 
     fn exit_scope(&mut self, data: &Bytes, exit_kind: ExitKind) -> Option<Resume> {
-        let child = match self.callstack.pop() {
-            None => panic!("pop from empty callstack is not allowed."),
+        let mut child = match self.callstack.peek() {
+            None => panic!("peeking empty callstack is not allowed."),
             Some(c) => c,
         };
-        let mut child = child.borrow_mut();
 
         if exit_kind == ExitKind::Revert {
             child.refund_counter = 0;
             (*self.host).borrow_mut().rollback(child.snapshot); // revert the state to previous snapshot
         }
 
-        if self.callstack.is_empty() {
-            self.callstack.push(child.clone()).unwrap(); // for returning execution result
+        if self.callstack.is_single() {
             return None;
         }
-        let parent = self.callstack.peek();
-        let mut parent = parent.borrow_mut();
+        let mut parent = match self.callstack.peek_mut() {
+            None => panic!("peeking empty callstack is not allowed."),
+            Some(c) => c.borrow_mut(),
+        };
 
         if exit_kind != ExitKind::Stop {
             parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
@@ -283,8 +283,7 @@ impl Executor {
 
     fn push_child_scope(&mut self, params: &CallParams) -> Result<(), FailureKind> {
         let child = {
-            let parent = self.callstack.peek();
-            let parent = parent.borrow_mut();
+            let parent = self.callstack.peek_unsafe();
             let child = self.create_child_scope(&parent, params);
             child
         };

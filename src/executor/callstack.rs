@@ -1,4 +1,4 @@
-use std::cell::{RefCell};
+use std::cell::{RefCell, RefMut};
 
 use bytes::Bytes;
 use ethereum_types::{Address, U256};
@@ -84,6 +84,10 @@ impl CallStack {
         self.0.is_empty()
     }
 
+    pub fn is_single(&self) -> bool {
+        self.0.len() == 1
+    }
+
     pub fn push(&mut self, value: CallScope) -> Result<(), FailureKind> {
         if self.0.len() >= SIZE {
             return Err(FailureKind::CallDepthExceeded);
@@ -92,11 +96,26 @@ impl CallStack {
         Ok(())
     }
 
-    pub fn peek(&self) -> &RefCell<CallScope> {
+    pub fn peek(&self) -> Option<CallScope> {
         if self.is_empty() {
-            panic!("call stack must not be empty");
+            return None;
         }
-        self.0.get(self.0.len() - 1).unwrap()
+        let val = self.0.get(self.0.len() - 1).unwrap();
+        Some(val.borrow().clone())
+    }
+    pub fn peek_unsafe(&self) -> CallScope {
+        if self.is_empty() {
+            panic!("peek unsafe failed");
+        }
+        let val = self.0.get(self.0.len() - 1).unwrap();
+        val.borrow().clone()
+    }
+    pub fn peek_mut(&self) -> Option<&RefCell<CallScope>> {
+        if self.is_empty() {
+            return None;
+        }
+        let val = self.0.get(self.0.len() - 1).unwrap();
+        Some(val)
     }
 
     pub fn pop(&mut self) -> Option<RefCell<CallScope>> {
