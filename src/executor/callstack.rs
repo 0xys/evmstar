@@ -18,7 +18,6 @@ use crate::executor::{
 
 #[derive(Clone, Debug, Default)]
 pub struct ExecutionContext {
-    pub refund_counter: i64,
     pub revision: Revision,
     pub num_of_selfdestruct: i64,
     pub return_data_buffer: Bytes,
@@ -42,6 +41,7 @@ pub struct CallScope {
     pub ret_offset: usize,
     pub ret_size: usize,
     pub snapshot: Snapshot,
+    pub refund_counter: i64,
 }
 impl Default for CallScope {
     fn default() -> Self {
@@ -62,6 +62,7 @@ impl Default for CallScope {
             ret_offset: 0,
             ret_size: 0,
             snapshot: 0,
+            refund_counter: 0,
         }
     }
 }

@@ -129,7 +129,6 @@ impl Executor {
 
     pub fn execute_raw_with(&mut self, mut scope: CallScope) -> Output {
         let mut exec_context = ExecutionContext {
-            refund_counter: 0,
             revision: self.revision,
             num_of_selfdestruct: 0,
             return_data_buffer: Bytes::default(),
@@ -207,8 +206,10 @@ impl Executor {
                                 if exit_kind == ExitKind::Revert {
                                     return Output::new_revert(gas_left, data);
                                 }
-                                let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, exec_context.refund_counter, exec_context.num_of_selfdestruct, self.revision);
-                                return Output::new_success(gas_left, exec_context.refund_counter, effective_refund, data);
+                                let root_scope = self.callstack.pop().unwrap();
+                                let root_scope = root_scope.borrow();
+                                let effective_refund = calc_effective_refund(scope.gas_limit, gas_left, root_scope.refund_counter, exec_context.num_of_selfdestruct, self.revision);
+                                return Output::new_success(gas_left, root_scope.refund_counter, effective_refund, data);
                             }
                         },
                         Interrupt::Call(params) => {
@@ -237,13 +238,15 @@ impl Executor {
             None => panic!("pop from empty callstack is not allowed."),
             Some(c) => c,
         };
-        let child = child.borrow_mut();
+        let mut child = child.borrow_mut();
 
         if exit_kind == ExitKind::Revert {
+            child.refund_counter = 0;
             (*self.host).borrow_mut().rollback(child.snapshot); // revert the state to previous snapshot
         }
 
         if self.callstack.is_empty() {
+            self.callstack.push(child.clone()).unwrap(); // for returning execution result
             return None;
         }
         let parent = self.callstack.peek();
@@ -253,6 +256,7 @@ impl Executor {
             parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
         }
         parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
+        parent.refund_counter += child.refund_counter;
 
         if exit_kind == ExitKind::Revert {
             return Some(Resume::Returned(FAILED));
