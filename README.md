@@ -4,19 +4,16 @@
 ```rs
 let mut emulator = EvmEmulator::new_transient_with(TxContext::default());
 let code = Code::builder()
+    .append(OpCode::PUSH1)  // OpCode
+    .append("02")           // hex character
     .append(OpCode::PUSH1)
-    .append("02")
-    .append(OpCode::PUSH1)
-    .append("03")
+    .append(0x03)           // u8
     .append(OpCode::ADD)
     .append(OpCode::PUSH1)
     .append("00")
     .append(OpCode::MSTORE)
-    .append(OpCode::PUSH1)
-    .append("20")
-    .append(OpCode::PUSH1)
-    .append("00")
-    .append(OpCode::RETURN)
+    .append("60206000")     // hex string
+    .append(OpCode::RETURN);
     .clone();
 
 let result = emulator.run_code(code);
