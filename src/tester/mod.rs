@@ -7,22 +7,22 @@ use hex::decode;
 use crate::{
     model::{code::Code, evmc::{Output, StatusCode, TxContext, AccessList}, revision::Revision},
     executor::{callstack::CallScope, executor::Executor},
-    host::stateful::StatefulHost
+    host::{stateful::StatefulHost, Host}
 };
 
 #[derive(Clone)]
-pub struct EvmTester {
+pub struct Evm {
     scope: CallScope,
-    host: Rc<RefCell<StatefulHost>>,
+    host: Rc<RefCell<dyn Host>>,
 
     is_execution_cost_enabled: bool,
     access_list: AccessList,
 }
 
 pub struct EvmResult {
-    host: Rc<RefCell<StatefulHost>>,
+    host: Rc<RefCell<dyn Host>>,
     scope: CallScope,
-    output: Output,
+    pub output: Output,
 }
 
 impl EvmResult {
@@ -50,11 +50,11 @@ impl EvmResult {
     }
 }
 
-impl EvmTester {
+impl Evm {
     pub fn new() -> Self {
         let host = StatefulHost::new();
         let host = Rc::new(RefCell::new(host));
-        EvmTester{
+        Evm{
             scope: CallScope::default(),
             host,
             is_execution_cost_enabled: false,
@@ -65,7 +65,7 @@ impl EvmTester {
     pub fn new_with(context: TxContext) -> Self {
         let host = StatefulHost::new_with(context);
         let host = Rc::new(RefCell::new(host));
-        EvmTester{
+        Evm{
             scope: CallScope::default(),
             host,
             is_execution_cost_enabled: false,

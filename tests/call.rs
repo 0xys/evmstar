@@ -2,7 +2,7 @@ use ethereum_types::{U256, Address};
 use hex::decode;
 
 use evmstar::tester::{
-    EvmTester,
+    Evm,
 };
 #[allow(unused_imports)]
 use evmstar::model::{
@@ -106,7 +106,7 @@ fn test_call() {
     
     let gas_limit = 100_000;
 
-    let mut tester = EvmTester::new_with(get_default_context());
+    let mut tester = Evm::new_with(get_default_context());
     let result = tester.with_to(default_address())
         .with_gas_limit(gas_limit)
         .with_gas_left(gas_limit)
@@ -143,7 +143,7 @@ fn test_remote_self_balance() {
     
     let gas_limit = 100_000;
 
-    let mut tester = EvmTester::new_with(get_default_context());
+    let mut tester = Evm::new_with(get_default_context());
     let result = tester.with_to(default_address())
         .with_gas_limit(gas_limit)
         .with_gas_left(gas_limit)
@@ -179,7 +179,7 @@ fn test_remote_address() {
         .clone();
     
     let gas_limit = 100_000;
-    let mut tester = EvmTester::new_with(get_default_context());
+    let mut tester = Evm::new_with(get_default_context());
     let result = tester.with_to(default_address())
         .with_gas_limit(gas_limit)
         .with_gas_left(gas_limit)
@@ -280,7 +280,7 @@ fn test_deep() {
         .append(OpCode::RETURN)
         .clone();   // 3 * 6 + call + 3 * 2 + 2 =  24 + call[=3+2600] + 2 = 2629
     
-    let mut tester = EvmTester::new_with(get_default_context());
+    let mut tester = Evm::new_with(get_default_context());
     tester.with_default_gas();
 
     let max_depth = 50;

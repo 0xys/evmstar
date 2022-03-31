@@ -4,9 +4,11 @@ pub mod stateful;
 use ethereum_types::{Address, U256};
 use bytes::Bytes;
 
-use crate::{model::evmc::{
+use crate::{model::{evmc::{
     Message, Output, TxContext, AccessStatus, StorageStatus
-}, executor::journal::Snapshot};
+}, code::Code}, executor::journal::Snapshot};
+
+use self::stateful::Account;
 
 /// EVMC Host interface
 /// https://evmc.ethereum.org/structevmc__host__interface.html
@@ -29,11 +31,17 @@ pub trait Host {
     fn access_storage(&mut self, address: Address, key: U256) -> AccessStatus;
 
     // extensions
+    fn add_account(&mut self, address: Address, account: Account);
+    fn debug_get_storage(&self, address: Address, key: U256) -> U256;
+    fn debug_set_storage(&mut self, address: Address, key: U256, new_value: U256);
+    fn debug_set_storage_as_warm(&mut self);
+    fn debug_deploy_contract(&mut self, address_hex: &str, code: Code, balance: U256);
+    fn debug_deploy_contract2(&mut self, address: Address, code: Code, balance: U256);
     fn get_blockhash(&self, height: usize) -> U256;
     fn get_code(&self, address: Address, offset: usize, size: usize) -> Bytes;
     fn add_balance(&mut self, address: Address, amount: U256);
     fn subtract_balance(&mut self, address: Address, amount: U256);
     fn take_snapshot(&self) -> Snapshot;
     fn rollback(&mut self, snapshot: Snapshot);
-    fn force_set_storage(&mut self, address: Address, key: U256, value: U256);
+    fn force_update_storage(&mut self, address: Address, key: U256, value: U256);
 }
