@@ -202,6 +202,22 @@ pub struct TxContext {
     pub base_fee: U256,
 }
 
+impl Default for TxContext {
+    fn default() -> Self {
+        TxContext {
+            gas_price: U256::default(),
+            origin: Address::from_low_u64_be(0),
+            coinbase: Address::from_low_u64_be(0),
+            block_number: 0,
+            block_timestamp: 0,
+            gas_limit: i64::max_value(),
+            difficulty: U256::default(),
+            chain_id: U256::from(0),
+            base_fee: U256::from(0),
+        }
+    }
+}
+
 /// https://evmc.ethereum.org/group__EVMC.html#ga9f71195f3873f9979d81d7a5e1b3aaf0
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AccessStatus {
