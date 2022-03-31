@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use evmstar::executor::callstack::CallScope;
-use evmstar::host::host::{
+use evmstar::host::transient::{
     TransientHost,
 };
 use evmstar::executor::{

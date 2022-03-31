@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use bytes::Bytes;
 use ethereum_types::{U256, Address};
 
-use evmstar::host::host::TransientHost;
+use evmstar::host::transient::TransientHost;
 use evmstar::executor::executor::Executor;
 #[allow(unused_imports)]
 use evmstar::model::{

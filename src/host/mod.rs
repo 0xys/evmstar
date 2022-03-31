@@ -1,4 +1,4 @@
-pub mod host;
+pub mod transient;
 pub mod stateful;
 
 use ethereum_types::{Address, U256};
