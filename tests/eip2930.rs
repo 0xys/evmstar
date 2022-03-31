@@ -45,7 +45,7 @@ fn get_default_context() -> TxContext {
 #[test]
 fn test_eip2930_nocode() {
     {
-        let mut tester = EvmEmulator::new_with(get_default_context());
+        let mut tester = EvmEmulator::new_stateful_with(get_default_context());
         let result = tester
             .with_default_gas()
             .add_accessed_account(address_0())
@@ -57,7 +57,7 @@ fn test_eip2930_nocode() {
             .expect_gas(21000 + 2400);
     }
     {
-        let mut tester = EvmEmulator::new_with(get_default_context());
+        let mut tester = EvmEmulator::new_stateful_with(get_default_context());
         let result = tester
             .with_default_gas()
             .add_accessed_account(address_0())
@@ -75,7 +75,7 @@ fn test_eip2930_nocode() {
 #[test]
 fn test_eip2930_nocode_storage() {
     {
-        let mut tester = EvmEmulator::new_with(get_default_context());
+        let mut tester = EvmEmulator::new_stateful_with(get_default_context());
         let result = tester
             .with_default_gas()
             .add_accessed_account(address_0())
@@ -90,7 +90,7 @@ fn test_eip2930_nocode_storage() {
             .expect_gas(21000 + 2400*3 + 1900);
     }
     {
-        let mut tester = EvmEmulator::new_with(get_default_context());
+        let mut tester = EvmEmulator::new_stateful_with(get_default_context());
         let result = tester
             .with_default_gas()
             .add_accessed_account(address_0())
@@ -142,7 +142,7 @@ fn test_eip2930() {
         + 2600      // cold extcodesize
         ;
     
-    let mut tester = EvmEmulator::new_with(get_default_context());
+    let mut tester = EvmEmulator::new_stateful_with(get_default_context());
     let result = tester
         .with_to(address_default())
         .with_default_gas()
@@ -182,7 +182,7 @@ fn test_eip2930_sstore() {
         + 22100     // cold sstore
         ;
 
-    let mut tester = EvmEmulator::new_with(get_default_context());
+    let mut tester = EvmEmulator::new_stateful_with(get_default_context());
     let result = tester
         .with_to(address_default())
         .with_default_gas()

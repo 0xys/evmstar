@@ -33,7 +33,7 @@ fn test_common_with_original(code: &str, consumed_gas: i64, gas_refund: i64, ori
     let code = builder.append(code).clone();
     let gas_limit = i64::max_value();
 
-    let mut tester = EvmEmulator::new_with(get_default_context());
+    let mut tester = EvmEmulator::new_stateful_with(get_default_context());
     let result = tester.with_to(default_address())
         .with_gas_limit(gas_limit)
         .with_gas_left(gas_limit)

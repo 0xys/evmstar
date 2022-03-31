@@ -32,7 +32,7 @@ impl TransientHost {
         }
     }
 
-    pub fn new_with_context(context: TxContext) -> Self {
+    pub fn new_with(context: TxContext) -> Self {
         TransientHost{
             context: context,
         }

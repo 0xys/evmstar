@@ -7,7 +7,7 @@ use hex::decode;
 use crate::{
     model::{code::Code, evmc::{Output, StatusCode, TxContext, AccessList}, revision::Revision},
     executor::{callstack::CallScope, executor::Executor},
-    host::{stateful::StatefulHost, Host}
+    host::{stateful::StatefulHost, Host, transient::TransientHost}
 };
 
 pub struct EvmEmulator {
@@ -50,8 +50,8 @@ impl EvmResult {
 }
 
 impl EvmEmulator {
-    pub fn new() -> Self {
-        let host = StatefulHost::new();
+    pub fn new_transient_with(context: TxContext) -> Self {
+        let host = TransientHost::new_with(context);
         let host = Rc::new(RefCell::new(host));
         EvmEmulator{
             scope: CallScope::default(),
@@ -61,7 +61,7 @@ impl EvmEmulator {
         }
     }
 
-    pub fn new_with(context: TxContext) -> Self {
+    pub fn new_stateful_with(context: TxContext) -> Self {
         let host = StatefulHost::new_with(context);
         let host = Rc::new(RefCell::new(host));
         EvmEmulator{

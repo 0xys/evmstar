@@ -44,7 +44,7 @@ fn test_revert_one_level() {
     
     let gas_limit = 100_000;
     
-    let mut tester = EvmEmulator::new_with(get_default_context());
+    let mut tester = EvmEmulator::new_stateful_with(get_default_context());
     let result = tester.with_to(default_address())
         .with_gas_limit(gas_limit)
         .with_gas_left(gas_limit)
@@ -73,7 +73,7 @@ fn test_revert_one_level_with_original() {
     
     let gas_limit = 100_000;
     
-    let mut tester = EvmEmulator::new_with(get_default_context());
+    let mut tester = EvmEmulator::new_stateful_with(get_default_context());
     let result = tester.with_to(default_address())
         .with_gas_limit(gas_limit)
         .with_gas_left(gas_limit)
@@ -170,7 +170,7 @@ fn test_multiple_revert() {
         .append(OpCode::RETURN)
         .clone();
 
-    let mut tester = EvmEmulator::new_with(get_default_context());
+    let mut tester = EvmEmulator::new_stateful_with(get_default_context());
     tester.with_default_gas();
 
     for i in 0..max {
@@ -273,7 +273,7 @@ fn callrevert_contract(called_address: u64) -> Code {
 
 #[test]
 fn test_stackitem_after_revert() {
-    let mut tester = EvmEmulator::new_with(get_default_context());
+    let mut tester = EvmEmulator::new_stateful_with(get_default_context());
     tester.with_default_gas()
         .with_contract_deployed2(address(1), return_contract(), U256::zero())
         .with_contract_deployed2(address(2), revert_contract(), U256::zero());
@@ -304,7 +304,7 @@ fn test_stackitem_after_revert() {
 
 #[test]
 fn test_revert_deep() {
-    let mut tester = EvmEmulator::new_with(get_default_context());
+    let mut tester = EvmEmulator::new_stateful_with(get_default_context());
     tester.with_default_gas()
         // [call, call, call, return, return, return]
         //      | 
