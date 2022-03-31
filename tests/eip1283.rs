@@ -10,7 +10,7 @@ use evmstar::model::{
     },
     revision::Revision,
 };
-use evmstar::tester::Evm;
+use evmstar::emulator::EvmEmulator;
 
 fn default_address() -> Address { Address::from_low_u64_be(0xffffeeee) }
 
@@ -33,7 +33,7 @@ fn test_common(code: &str, consumed_gas: i64, gas_refund: i64) {
     let code = builder.append(code).clone();
     let gas_limit = i64::max_value();
 
-    let mut tester = Evm::new_with(get_default_context());
+    let mut tester = EvmEmulator::new_with(get_default_context());
     let result = tester.with_to(default_address())
         .with_gas_limit(gas_limit)
         .with_gas_left(gas_limit)
@@ -50,7 +50,7 @@ fn test_common_with_initial_state(code: &str, consumed_gas: i64, gas_refund: i64
     let code = builder.append(code).clone();
     let gas_limit = i64::max_value();
 
-    let mut tester = Evm::new_with(get_default_context());
+    let mut tester = EvmEmulator::new_with(get_default_context());
     let result = tester.with_to(default_address())
         .with_gas_limit(gas_limit)
         .with_gas_left(gas_limit)
@@ -147,7 +147,7 @@ fn test_eip1283_16(){// 16
     let code = builder.append(code).clone();
     let gas_limit = i64::max_value();
 
-    let mut tester = Evm::new_with(get_default_context());
+    let mut tester = EvmEmulator::new_with(get_default_context());
     let result = tester.with_to(default_address())
         .with_gas_limit(gas_limit)
         .with_gas_left(gas_limit)

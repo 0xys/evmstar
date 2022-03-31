@@ -1,5 +1,5 @@
 use ethereum_types::{U256, Address};
-use evmstar::tester::Evm;
+use evmstar::emulator::EvmEmulator;
 
 use evmstar::model::{
     code::{
@@ -32,7 +32,7 @@ fn sstore_eip2929(code: &str, gas_used: i64, gas_refund: i64, warm: bool, origin
     let code = Code::builder().append(code).clone();
     let gas_limit = i64::max_value();
 
-    let mut tester = Evm::new_with(get_default_context());
+    let mut tester = EvmEmulator::new_with(get_default_context());
     tester.with_to(default_address())
         .with_gas_limit(gas_limit)
         .with_gas_left(gas_limit)

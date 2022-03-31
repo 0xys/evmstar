@@ -10,8 +10,7 @@ use crate::{
     host::{stateful::StatefulHost, Host}
 };
 
-#[derive(Clone)]
-pub struct Evm {
+pub struct EvmEmulator {
     scope: CallScope,
     host: Rc<RefCell<dyn Host>>,
 
@@ -50,11 +49,11 @@ impl EvmResult {
     }
 }
 
-impl Evm {
+impl EvmEmulator {
     pub fn new() -> Self {
         let host = StatefulHost::new();
         let host = Rc::new(RefCell::new(host));
-        Evm{
+        EvmEmulator{
             scope: CallScope::default(),
             host,
             is_execution_cost_enabled: false,
@@ -65,7 +64,7 @@ impl Evm {
     pub fn new_with(context: TxContext) -> Self {
         let host = StatefulHost::new_with(context);
         let host = Rc::new(RefCell::new(host));
-        Evm{
+        EvmEmulator{
             scope: CallScope::default(),
             host,
             is_execution_cost_enabled: false,
