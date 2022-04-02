@@ -2,11 +2,8 @@
 
 # Toy Example
 ```rs
-let host = TransientHost::new();
-let mut executor = Executor::new(Box::new(host));
-let mut builder = Code::builder();
-
-let code = builder
+let mut emulator = EvmEmulator::new_transient_with(TxContext::default());
+let code = Code::builder()
     .append(OpCode::PUSH1)  // OpCode
     .append("02")           // hex character
     .append(OpCode::PUSH1)
@@ -17,14 +14,13 @@ let code = builder
     .append(OpCode::MSTORE)
     .append("60206000")     // hex string
     .append(OpCode::RETURN);
+    .clone();
 
-let output = executor.execute_raw(&code);
+let result = emulator.run_code(code);
 
-let data = decode("0000000000000000000000000000000000000000000000000000000000000005").unwrap();
-
-assert_eq!(StatusCode::Success, output.status_code);
-assert_eq!(Bytes::from(data), output.data);
-assert_eq!(24, i64::max() - output.gas_left);
+result.expect_status(StatusCode::Success)
+    .expect_gas(24)
+    .expect_output("0000000000000000000000000000000000000000000000000000000000000005");
 ```
 
 # Progress

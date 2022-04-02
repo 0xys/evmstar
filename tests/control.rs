@@ -3,7 +3,7 @@ use std::cell::RefCell;
 
 use bytes::Bytes;
 
-use evmstar::host::host::TransientHost;
+use evmstar::host::transient::TransientHost;
 use evmstar::executor::executor::Executor;
 #[allow(unused_imports)]
 use evmstar::model::{
