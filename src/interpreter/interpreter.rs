@@ -1013,11 +1013,11 @@ impl Interpreter {
                         25000
                     };
 
-                let caller_balance = host.get_balance(scope.caller);
+                let caller_balance = host.get_balance(scope.to);
                 if caller_balance < value {
                     return Err(FailureKind::InsufficientBalance);
                 }
-                host.subtract_balance(scope.caller, value);
+                host.subtract_balance(scope.to, value);
                 host.add_balance(address, value);
 
                 let memory_expansion_cost = args_cost + ret_cost;

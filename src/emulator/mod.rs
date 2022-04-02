@@ -47,6 +47,11 @@ impl EvmResult {
         assert_eq!(expected_value, value);
         self
     }
+    pub fn expect_balance<'a>(&'a self, address: Address, balance: U256) -> &'a Self {
+        let value = (*self.host).borrow().get_balance(address);
+        assert_eq!(value, balance);
+        self
+    }
 }
 
 impl EvmEmulator {
@@ -78,6 +83,10 @@ impl EvmEmulator {
     }
     pub fn with_to<'a>(&'a mut self, to: Address) -> &'a mut Self {
         self.scope.to = to;
+        self
+    }
+    pub fn with_account<'a>(&'a mut self, address: Address, balance: U256) -> &'a mut Self {
+        (*self.host).borrow_mut().debug_deploy_contract2(address, Code::empty(), balance);
         self
     }
     pub fn with_code<'a>(&'a mut self, code: Code) -> &'a mut Self {
