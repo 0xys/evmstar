@@ -309,7 +309,7 @@ fn test_deep() {
 fn test_transfer() {
     let sender_address = address(0xff);
     let sender_balance = U256::from_str("ffffffffffffffff").unwrap();
-    let contract_address = address(0xdd);
+    let receiver_address = address(0xdd);
     let value = U256::from(0xefefef);
 
     let code = Code::builder()
@@ -324,7 +324,7 @@ fn test_transfer() {
         .append(OpCode::PUSH32)
         .append(value)   // value
         .append(OpCode::PUSH20)
-        .append(contract_address)   // address
+        .append(receiver_address)   // address
         .append(OpCode::GAS)    // 2
         .append(OpCode::CALL)
         .append(OpCode::PUSH1)
@@ -332,7 +332,14 @@ fn test_transfer() {
         .append(OpCode::PUSH1)
         .append(0x00)   // ret_offset
         .append(OpCode::RETURN)
-        .clone();   // 3 * 6 + call + 3 * 2 + 2 =  24 + call[=3+2600] + 2 = 2629
+        .clone();   // 3 * 6 + call + 3 * 2 + 2 = 24 + call[=3+2600+25000+9000-2300] + 2 = 2629
+        /*
+        3       : memory expansion
+        2600    : cold access
+        25000   : to empty account
+        9000    : non-zero
+        -2300   : gas stipend
+        */
     
     let mut emulator = EvmEmulator::new_stateful_with(get_default_context());
 
@@ -340,13 +347,14 @@ fn test_transfer() {
         .with_default_gas()
         .with_to(sender_address)
         .with_account(sender_address, sender_balance)
-        .with_contract_deployed2(contract_address, Code::builder().append("").clone(), U256::zero());
+        .with_contract_deployed2(receiver_address, Code::empty(), U256::zero());
     
     let result = emulator.run_code(code);
 
     result.expect_status(StatusCode::Success)
         .expect_output("0000000000000000000000000000000000000000000000000000000000000000")
         .expect_balance(sender_address, sender_balance - value)
-        .expect_balance(contract_address, value)
+        .expect_balance(receiver_address, value)
+        .expect_gas(24 + 3+2600+25000+9000-2300 + 2)
         ;
 }
