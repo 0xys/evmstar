@@ -112,8 +112,13 @@ impl EvmEmulator {
         self
     }
 
-    pub fn with_storage_always_warm<'a>(&'a mut self) -> &'a mut Self {
+    pub fn with_warm_storage<'a>(&'a mut self) -> &'a mut Self {
         (*self.host).borrow_mut().debug_set_storage_as_warm();
+        self
+    }
+
+    pub fn with_warm_account<'a>(&'a mut self, address: Address) -> &'a mut Self {
+        (*self.host).borrow_mut().access_account(address);
         self
     }
 

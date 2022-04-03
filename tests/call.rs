@@ -460,3 +460,77 @@ fn test_transfer_insufficient_balance() {
         .expect_output("")
         ;
 }
+
+#[test]
+fn test_transfer_gas_by_revisions() {
+    let sender_address = address(0xff);
+    let sender_balance = U256::from_str("ffffffffffffffff").unwrap();
+    let receiver_address = address(0xdd);
+    let value = U256::from_str("ffffffffffffffff").unwrap();
+
+    let code = Code::builder()
+        .append(OpCode::PUSH1)
+        .append(0x20)   // ret_size
+        .append(OpCode::PUSH1)
+        .append(0x00)   // ret_offset
+        .append(OpCode::PUSH1)
+        .append(0x00)   // args_size
+        .append(OpCode::PUSH1)
+        .append(0x00)   // args_offset
+        .append(OpCode::PUSH32)
+        .append(value)   // value
+        .append(OpCode::PUSH20)
+        .append(receiver_address)   // address
+        .append(OpCode::PUSH32)  // 3
+        .append(U256::from_str("ffff").unwrap())   // gas
+        .append(OpCode::CALL)
+        .append(OpCode::PUSH1)
+        .append(0x20)   // ret_size
+        .append(OpCode::PUSH1)
+        .append(0x00)   // ret_offset
+        .append(OpCode::RETURN)
+        .clone();   // 3 * 7 + call + 3 * 2 + 2 = 27 + call[=3+static_cost+cold_cost+9000-2300]
+
+    for revision in Revision::iter() {
+        for is_cold in [true, false] {
+            let mut emulator = EvmEmulator::new_stateful_with(get_default_context());
+
+            let emulator = emulator
+                .with_default_gas()
+                .with_to(sender_address)
+                .with_account(sender_address, sender_balance)
+                .with_contract_deployed2(receiver_address, Code::empty(), U256::zero());
+            
+            if !is_cold {
+                emulator.with_warm_account(receiver_address);
+            }
+
+            let result = emulator.run_code_as(code.clone(), revision);
+        
+            let static_cost = 
+                if revision >= Revision::Berlin {
+                    0
+                }else{
+                    if revision <= Revision::Homestead {
+                        40
+                    }else{
+                        700
+                    }
+                };
+
+            let cold_cost =
+                if revision >= Revision::Berlin {
+                    if is_cold { 2600 } else { 100 }
+                } else {
+                    0
+                };
+    
+            result.expect_status(StatusCode::Success)
+                .expect_output("0000000000000000000000000000000000000000000000000000000000000000")
+                .expect_balance(sender_address, sender_balance - value)
+                .expect_balance(receiver_address, value)
+                .expect_gas(27 + 3+static_cost+cold_cost+9000-2300)
+                ;
+        }
+    }
+}

@@ -39,7 +39,7 @@ fn sstore_eip2929(code: &str, gas_used: i64, gas_refund: i64, warm: bool, origin
         .with_storage(default_address(), U256::zero(), U256::from(original));
     
     if warm {
-        tester.with_storage_always_warm();
+        tester.with_warm_storage();
     }
 
     let result = tester.run_code_as(code, Revision::Berlin);

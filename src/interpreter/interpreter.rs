@@ -881,9 +881,9 @@ impl Interpreter {
                 Ok(None)
             },
             OpCode::GAS => {
-                Self::consume_constant_gas(&mut scope.gas_left, 2)?;
-                let len = U256::from(scope.gas_left);
-                stack.push(len)?;
+                Self::consume_constant_gas(&mut scope.gas_left, 2)?;    // amount of available gas after this instruction
+                let gas_left = U256::from(scope.gas_left);
+                stack.push(gas_left)?;
                 Ok(None)
             },
             OpCode::JUMPDEST => {
