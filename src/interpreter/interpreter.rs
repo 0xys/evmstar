@@ -1022,17 +1022,17 @@ impl Interpreter {
 
                 let memory_expansion_cost = args_cost + ret_cost;
                 let extra_gas = address_access_cost + positive_value_cost + value_to_empty_cost;
+                Self::consume_constant_gas(&mut scope.gas_left, static_cost + extra_gas + memory_expansion_cost)?;
 
                 let gas =
                     if exec_context.revision < Revision::Tangerine {
                         gas
                     }else{
                         // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-150.md
-                        min(gas, Self::max_call_gas(scope.gas_left - extra_gas))
+                        min(gas, Self::max_call_gas(scope.gas_left))
                     };
 
-                let total_cost = static_cost + gas + extra_gas + memory_expansion_cost;
-                Self::consume_constant_gas(&mut scope.gas_left, total_cost)?;
+                Self::consume_constant_gas(&mut scope.gas_left, gas)?;
 
                 // gas stipend is added out of thin air
                 let gas = gas + if !value.is_zero() { 2300 } else { 0 };
