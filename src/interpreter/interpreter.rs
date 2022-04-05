@@ -1010,7 +1010,7 @@ impl Interpreter {
                     if host.account_exists(address){
                         0
                     }else{
-                        25000
+                        if !value.is_zero() { 25000 } else { 0 }
                     };
 
                 let caller_balance = host.get_balance(scope.to);
