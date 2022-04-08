@@ -42,6 +42,6 @@ pub trait Host {
     fn add_balance(&mut self, address: Address, amount: U256);
     fn subtract_balance(&mut self, address: Address, amount: U256);
     fn take_snapshot(&self) -> Snapshot;
-    fn rollback(&mut self, snapshot: Snapshot);
+    fn rollback(&mut self, snapshot: &Snapshot);
     fn force_update_storage(&mut self, address: Address, key: U256, value: U256);
 }

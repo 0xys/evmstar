@@ -192,7 +192,7 @@ impl Executor {
                         }
                     }
     
-                    (*self.host).borrow_mut().rollback(child.borrow().snapshot);
+                    (*self.host).borrow_mut().rollback(&child.borrow().snapshot);
     
                     resume = Resume::Returned(FAILED);
                     continue;
@@ -240,7 +240,7 @@ impl Executor {
         let child = child.borrow_mut();
 
         if exit_kind == ExitKind::Revert {
-            (*self.host).borrow_mut().rollback(child.snapshot); // revert the state to previous snapshot
+            (*self.host).borrow_mut().rollback(&child.snapshot); // revert the state to previous snapshot
         }
 
         if self.callstack.is_empty() {

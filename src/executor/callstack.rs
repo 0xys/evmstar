@@ -61,7 +61,7 @@ impl Default for CallScope {
             gas_left: i64::max_value(),
             ret_offset: 0,
             ret_size: 0,
-            snapshot: 0,
+            snapshot: Snapshot::default(),
         }
     }
 }

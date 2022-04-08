@@ -5,7 +5,7 @@ use std::{
     sync::Mutex,
 };
 
-use crate::executor::journal::{Journal, Snapshot};
+use crate::executor::journal::{Journal, Snapshot, Sign};
 use crate::host::Host;
 use crate::model::code::Code;
 use crate::model::evmc::{
@@ -426,6 +426,7 @@ impl Host for StatefulHost {
             .or_default();
         
         account.balance += amount;
+        self.journal.record_balance_delta(address, Sign::Plus, amount);
     }
     fn subtract_balance(&mut self, address: Address, amount: U256){
         let account = self
@@ -434,15 +435,38 @@ impl Host for StatefulHost {
             .or_default();
         
         account.balance -= amount;
+        self.journal.record_balance_delta(address, Sign::Minus, amount);
     }
     fn take_snapshot(&self) -> Snapshot {
-        self.journal.storage_log.len()
+        Snapshot {
+            storage_snapshot: self.journal.storage_log.len(),
+            balance_snapshot: self.journal.balance_log.len(),
+        }
     }
-    fn rollback(&mut self, snapshot: Snapshot) {
+    fn rollback(&mut self, snapshot: &Snapshot) {
+        // rollback storage delta
         let length = self.journal.storage_log.len();
-        for _ in 0..length - snapshot {
+        for _ in 0..length - snapshot.storage_snapshot {
             if let Some(delta) = self.journal.storage_log.pop() {
                 self.force_update_storage(delta.address, delta.key, delta.previous);
+            }
+        }
+
+        // rollback balance delta
+        let length = self.journal.balance_log.len();
+        for _ in 0..length - snapshot.balance_snapshot {
+            if let Some(delta) = self.journal.balance_log.pop() {
+                let account = self
+                    .accounts
+                    .entry(delta.address)
+                    .or_default();
+                
+                // undo balance delta
+                match delta.sign {
+                    Sign::Plus => account.balance -= delta.amount,
+                    Sign::Minus => account.balance += delta.amount,
+                    _ => ()
+                }
             }
         }
     }

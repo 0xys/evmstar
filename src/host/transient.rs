@@ -118,9 +118,9 @@ impl Host for TransientHost {
 
     }
     fn take_snapshot(&self) -> Snapshot {
-        0
+        Snapshot::default()
     }
-    fn rollback(&mut self, snapshot: Snapshot){
+    fn rollback(&mut self, snapshot: &Snapshot){
         
     }
     fn force_update_storage(&mut self, address: Address, key: U256, value: U256){
