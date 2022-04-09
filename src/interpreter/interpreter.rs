@@ -836,7 +836,7 @@ impl Interpreter {
 
                 let storage_status = host.set_storage(scope.to, key, new_value);
 
-                exec_context.refund_counter += calc_sstore_gas_refund(new_value, exec_context.revision, storage_status);
+                scope.refund_counter += calc_sstore_gas_refund(new_value, exec_context.revision, storage_status);
                 let gas = calc_sstore_gas_cost(new_value, exec_context.revision, access_status, storage_status);
                 Self::consume_constant_gas(&mut scope.gas_left, gas)?;
 

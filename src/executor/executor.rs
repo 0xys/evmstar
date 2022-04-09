@@ -200,7 +200,7 @@ impl Executor {
                 Ok(interrupt) => {
                     match interrupt {
                         Interrupt::Exit(gas_left, data, exit_kind) => {
-                            if let Some(r) = self.exit_scope(&data, exit_kind) {
+                            if let Some(r) = self.exit_scope(&mut exec_context, &data, exit_kind) {
                                 resume = r;
                                 continue;
                             }else{
@@ -232,18 +232,20 @@ impl Executor {
     
     }
 
-    fn exit_scope(&mut self, data: &Bytes, exit_kind: ExitKind) -> Option<Resume> {
+    fn exit_scope(&mut self, exec_context: &mut ExecutionContext, data: &Bytes, exit_kind: ExitKind) -> Option<Resume> {
         let child = match self.callstack.pop() {
             None => panic!("pop from empty callstack is not allowed."),
             Some(c) => c,
         };
-        let child = child.borrow_mut();
+        let mut child = child.borrow_mut();
 
         if exit_kind == ExitKind::Revert {
+            child.refund_counter = 0;
             (*self.host).borrow_mut().rollback(&child.snapshot); // revert the state to previous snapshot
         }
 
         if self.callstack.is_empty() {
+            exec_context.refund_counter = child.refund_counter;
             return None;
         }
         let parent = self.callstack.peek();
@@ -253,6 +255,7 @@ impl Executor {
             parent.memory.set_range(child.ret_offset, &data[..child.ret_size]);
         }
         parent.gas_left = parent.gas_left.saturating_add(child.gas_left);  // refund unused gas
+        parent.refund_counter += child.refund_counter;
 
         if exit_kind == ExitKind::Revert {
             return Some(Resume::Returned(FAILED));

@@ -42,6 +42,7 @@ pub struct CallScope {
     pub ret_offset: usize,
     pub ret_size: usize,
     pub snapshot: Snapshot,
+    pub refund_counter: i64,
 }
 impl Default for CallScope {
     fn default() -> Self {
@@ -62,6 +63,7 @@ impl Default for CallScope {
             ret_offset: 0,
             ret_size: 0,
             snapshot: Snapshot::default(),
+            refund_counter: 0,
         }
     }
 }
