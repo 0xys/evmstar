@@ -7,6 +7,8 @@ use ethereum_types::{
 };
 use bytes::Bytes;
 
+use crate::executor::journal::Snapshot;
+
 pub type StorageKey = U256;
 pub type StorageValue = U256;
 pub type LogData = Vec<u8>;
@@ -58,6 +60,7 @@ pub struct CallParams {
     pub args_size: usize,
     pub ret_offset: usize,
     pub ret_size: usize,
+    pub snapshot: Snapshot,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

@@ -1017,6 +1017,8 @@ impl Interpreter {
                 if caller_balance < value {
                     return Err(FailureKind::InsufficientBalance);
                 }
+                let snapshot = host.take_snapshot();
+
                 host.subtract_balance(scope.to, value);
                 host.add_balance(address, value);
 
@@ -1046,31 +1048,32 @@ impl Interpreter {
                     args_size,
                     ret_offset,
                     ret_size,
+                    snapshot,
                 };
 
                 Ok(Some(Interrupt::Call(params)))
             },
             OpCode::CALLCODE => {
-                let gas = scope.stack.pop()?;
-                let address = scope.stack.pop()?;
-                let address = u256_to_address(address);
-                let value = scope.stack.pop()?;
-                let args_offset = scope.stack.pop()?;
-                let args_size = scope.stack.pop()?;
-                let ret_offset = scope.stack.pop()?;
-                let ret_size = scope.stack.pop()?;
-                let params = CallParams {
-                    kind: CallKind::CallCode,
-                    gas: gas.as_u32() as i64,
-                    address,
-                    value,
-                    args_offset: args_offset.as_usize(),
-                    args_size: args_size.as_usize(),
-                    ret_offset: ret_offset.as_usize(),
-                    ret_size: ret_size.as_usize(),
-                };
+                // let gas = scope.stack.pop()?;
+                // let address = scope.stack.pop()?;
+                // let address = u256_to_address(address);
+                // let value = scope.stack.pop()?;
+                // let args_offset = scope.stack.pop()?;
+                // let args_size = scope.stack.pop()?;
+                // let ret_offset = scope.stack.pop()?;
+                // let ret_size = scope.stack.pop()?;
+                // let params = CallParams {
+                //     kind: CallKind::CallCode,
+                //     gas: gas.as_u32() as i64,
+                //     address,
+                //     value,
+                //     args_offset: args_offset.as_usize(),
+                //     args_size: args_size.as_usize(),
+                //     ret_offset: ret_offset.as_usize(),
+                //     ret_size: ret_size.as_usize(),
+                // };
 
-                Ok(Some(Interrupt::Call(params)))
+                Ok(None)
             },
 
             OpCode::RETURN => {
@@ -1087,25 +1090,25 @@ impl Interpreter {
                 if exec_context.revision < Revision::Homestead {
                     return Err(FailureKind::InvalidInstruction);
                 }
-                let gas = scope.stack.pop()?;
-                let address = scope.stack.pop()?;
-                let address = u256_to_address(address);
-                let args_offset = scope.stack.pop()?;
-                let args_size = scope.stack.pop()?;
-                let ret_offset = scope.stack.pop()?;
-                let ret_size = scope.stack.pop()?;
-                let params = CallParams {
-                    kind: CallKind::DelegateCall,
-                    gas: gas.as_u32() as i64,
-                    address,
-                    value: U256::zero(),
-                    args_offset: args_offset.as_usize(),
-                    args_size: args_size.as_usize(),
-                    ret_offset: ret_offset.as_usize(),
-                    ret_size: ret_size.as_usize(),
-                };
+                // let gas = scope.stack.pop()?;
+                // let address = scope.stack.pop()?;
+                // let address = u256_to_address(address);
+                // let args_offset = scope.stack.pop()?;
+                // let args_size = scope.stack.pop()?;
+                // let ret_offset = scope.stack.pop()?;
+                // let ret_size = scope.stack.pop()?;
+                // let params = CallParams {
+                //     kind: CallKind::DelegateCall,
+                //     gas: gas.as_u32() as i64,
+                //     address,
+                //     value: U256::zero(),
+                //     args_offset: args_offset.as_usize(),
+                //     args_size: args_size.as_usize(),
+                //     ret_offset: ret_offset.as_usize(),
+                //     ret_size: ret_size.as_usize(),
+                // };
 
-                Ok(Some(Interrupt::Call(params)))
+                Ok(None)
             },
             // OpCode::CREATE2 => {
             //     Ok(None)
@@ -1115,25 +1118,25 @@ impl Interpreter {
                 if exec_context.revision < Revision::Byzantium {
                     return Err(FailureKind::InvalidInstruction);
                 }
-                let gas = scope.stack.pop()?;
-                let address = scope.stack.pop()?;
-                let address = u256_to_address(address);
-                let args_offset = scope.stack.pop()?;
-                let args_size = scope.stack.pop()?;
-                let ret_offset = scope.stack.pop()?;
-                let ret_size = scope.stack.pop()?;
-                let params = CallParams {
-                    kind: CallKind::StaticCall,
-                    gas: gas.as_u32() as i64,
-                    address,
-                    value: U256::zero(),
-                    args_offset: args_offset.as_usize(),
-                    args_size: args_size.as_usize(),
-                    ret_offset: ret_offset.as_usize(),
-                    ret_size: ret_size.as_usize(),
-                };
+                // let gas = scope.stack.pop()?;
+                // let address = scope.stack.pop()?;
+                // let address = u256_to_address(address);
+                // let args_offset = scope.stack.pop()?;
+                // let args_size = scope.stack.pop()?;
+                // let ret_offset = scope.stack.pop()?;
+                // let ret_size = scope.stack.pop()?;
+                // let params = CallParams {
+                //     kind: CallKind::StaticCall,
+                //     gas: gas.as_u32() as i64,
+                //     address,
+                //     value: U256::zero(),
+                //     args_offset: args_offset.as_usize(),
+                //     args_size: args_size.as_usize(),
+                //     ret_offset: ret_offset.as_usize(),
+                //     ret_size: ret_size.as_usize(),
+                // };
 
-                Ok(Some(Interrupt::Call(params)))
+                Ok(None)
             },
 
             OpCode::REVERT => {

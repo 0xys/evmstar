@@ -8,7 +8,7 @@ pub struct Journal {
     pub balance_log: Vec<BalanceDelta>,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Debug, Default)]
 pub struct Snapshot {
     pub storage_snapshot: usize,
     pub balance_snapshot: usize,

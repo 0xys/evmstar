@@ -313,7 +313,7 @@ impl Executor {
                 child.ret_size = params.ret_size;
 
                 child.is_staticcall = parent.is_staticcall;    // child succeeds `is_static` flag
-                child.snapshot = host.take_snapshot();
+                child.snapshot = params.snapshot;
 
                 child
             },
