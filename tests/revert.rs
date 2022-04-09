@@ -192,7 +192,7 @@ fn test_multiple_revert() {
     result.expect_output("0000000000000000000000000000000000000000000000000000000000000042"); // 0x42 = 66 = 0 + 1 + 2 + ... + 11)
 }
 
-fn call_code(address_u64: u64) -> Code {
+fn call_code(address_u64: u64, value: i32) -> Code {
     let code = Code::builder()
         .append(OpCode::PUSH1)
         .append(0x00)   // ret_size
@@ -203,7 +203,7 @@ fn call_code(address_u64: u64) -> Code {
         .append(OpCode::PUSH1)
         .append(0x00)   // args_offset
         .append(OpCode::PUSH32)
-        .append(U256::from(0x00))   // value
+        .append(U256::from(value))   // value
         .append(OpCode::PUSH20)
         .append(address(address_u64))   // address
         .append(OpCode::GAS)    // 2
@@ -246,7 +246,7 @@ fn callreturn_contract(called_address: u64) -> Code {
         .append(OpCode::PUSH1)
         .append(0x00)
         .append(OpCode::SSTORE)
-        .append_code(&mut call_code(called_address))
+        .append_code(&mut call_code(called_address, 0))
         .append(OpCode::PUSH1)
         .append(0x20)
         .append(OpCode::PUSH1)
@@ -261,7 +261,7 @@ fn callrevert_contract(called_address: u64) -> Code {
         .append(OpCode::PUSH1)
         .append(0x00)
         .append(OpCode::SSTORE)
-        .append_code(&mut call_code(called_address))
+        .append_code(&mut call_code(called_address, 0))
         .append(OpCode::PUSH1)
         .append(0x20)
         .append(OpCode::PUSH1)
@@ -279,12 +279,12 @@ fn test_stackitem_after_revert() {
         .with_contract_deployed2(address(2), revert_contract(), U256::zero());
     
     let code = Code::builder()
-        .append_code(&mut call_code(1)) // success = push 1
+        .append_code(&mut call_code(1, 0)) // success = push 1
         .append(OpCode::PUSH1)
         .append(0x00)
         .append(OpCode::MSTORE)
 
-        .append_code(&mut call_code(2)) // revert = push 0
+        .append_code(&mut call_code(2, 0)) // revert = push 0
         .append(OpCode::ISZERO)
         .append(OpCode::PUSH1)
         .append(0x20)
@@ -376,10 +376,10 @@ fn test_revert_deep() {
         .with_contract_deployed2(address(12), return_contract(), U256::zero());
 
     let code = Code::builder()
-        .append_code(&mut call_code(1))
-        .append_code(&mut call_code(4))
-        .append_code(&mut call_code(7))
-        .append_code(&mut call_code(10))
+        .append_code(&mut call_code(1, 0))
+        .append_code(&mut call_code(4, 0))
+        .append_code(&mut call_code(7, 0))
+        .append_code(&mut call_code(10, 0))
         .append(OpCode::PUSH1)
         .append(0x20)
         .append(OpCode::PUSH1)
@@ -407,18 +407,53 @@ fn test_revert_deep() {
 }
 
 #[test]
-fn test_revert_gas_refund() {
-    // TODO
-    assert!(false);
+fn test_revert_balance_transfer() {
+    let to = address(0xeeee);
+    let ret_address = 0x00;
+    let rev_address = 0x01;
+    let value = 0x01;
+
+    let mut tester = EvmEmulator::new_stateful_with(get_default_context());
+    tester.with_default_gas()
+        .with_to(to)
+        .with_account(to, U256::from(0xffff))
+        .with_contract_deployed2(address(ret_address), return_contract(), U256::zero())
+        .with_contract_deployed2(address(rev_address), revert_contract(), U256::zero())
+        ;
+    
+    let code = Code::builder()
+        .append_code(&mut call_code(ret_address, value))
+        .append_code(&mut call_code(rev_address, value))
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::RETURN)
+        .clone();
+
+    let result = tester.run_code(code);
+    result.expect_status(StatusCode::Success)
+        .expect_balance(to, U256::from(0xffff - 1))
+        .expect_balance(address(ret_address), U256::from(value))    // transfered
+        .expect_balance(address(rev_address), U256::zero())     // transfer reverted
+        .expect_storage(address(ret_address), U256::zero(), address_value(ret_address))
+        .expect_storage(address(rev_address), U256::zero(), U256::zero())
+        ;
 }
 
-#[test]
-fn test_reverted_create() {
-    // TODO
-    assert!(false);
-}
-#[test]
-fn test_reverted_create2() {
-    // TODO
-    assert!(false);
-}
+// #[test]
+// fn test_revert_gas_refund() {
+//     // TODO
+//     assert!(false);
+// }
+
+// #[test]
+// fn test_reverted_create() {
+//     // TODO
+//     assert!(false);
+// }
+// #[test]
+// fn test_reverted_create2() {
+//     // TODO
+//     assert!(false);
+// }
