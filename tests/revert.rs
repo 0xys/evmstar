@@ -581,13 +581,13 @@ fn test_revert_gas_refund() {
         ;
 }
 
-// #[test]
-// fn test_reverted_create() {
-//     // TODO
-//     assert!(false);
-// }
-// #[test]
-// fn test_reverted_create2() {
-//     // TODO
-//     assert!(false);
-// }
+#[test]
+fn test_reverted_create() {
+    // TODO
+    assert!(false);
+}
+#[test]
+fn test_reverted_create2() {
+    // TODO
+    assert!(false);
+}
