@@ -441,11 +441,145 @@ fn test_revert_balance_transfer() {
         ;
 }
 
-// #[test]
-// fn test_revert_gas_refund() {
-//     // TODO
-//     assert!(false);
-// }
+
+fn sstore_return_contract(key: U256, value: U256) -> Code {
+    let code = Code::builder()
+        .append(OpCode::PUSH32)
+        .append(value)
+        .append(OpCode::PUSH32)
+        .append(key)
+        .append(OpCode::SSTORE)
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::RETURN)
+        .clone();
+    code
+}
+fn sstore_revert_contract(key: U256, value: U256) -> Code {
+    let code = Code::builder()
+        .append(OpCode::PUSH32)
+        .append(value)
+        .append(OpCode::PUSH32)
+        .append(key)
+        .append(OpCode::SSTORE)
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::REVERT)
+        .clone();
+    code
+}
+fn sstore_callreturn_contract(called_address: u64, key: U256, value: U256) -> Code {
+    let code = Code::builder()
+        .append(OpCode::PUSH32)
+        .append(value)
+        .append(OpCode::PUSH32)
+        .append(key)
+        .append(OpCode::SSTORE)
+        .append_code(&mut call_code(called_address, 0))
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::RETURN)
+        .clone();
+    code
+}
+fn sstore_callrevert_contract(called_address: u64, key: U256, value: U256) -> Code {
+    let code = Code::builder()
+        .append(OpCode::PUSH32)
+        .append(value)
+        .append(OpCode::PUSH32)
+        .append(key)
+        .append(OpCode::SSTORE)
+        .append_code(&mut call_code(called_address, 0))
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::REVERT)
+        .clone();
+    code
+}
+#[test]
+fn test_revert_gas_refund() {
+    let key = U256::zero();
+    let initial_value = U256::from(0xaa);
+
+    let mut tester = EvmEmulator::new_stateful_with(get_default_context());
+    tester.with_default_gas()
+        //  [call, call, call, return, return, return]
+        //  refund = 4800 + 4800 + 4800 = 14400
+        .with_contract_deployed2(address(1), sstore_callreturn_contract(2, key, U256::zero()), U256::zero())
+        .with_contract_deployed2(address(2), sstore_callreturn_contract(3, key, U256::zero()), U256::zero())
+        .with_contract_deployed2(address(3), sstore_return_contract(key, U256::zero()), U256::zero())
+        .with_storage(address(1), key, initial_value)
+        .with_storage(address(2), key, initial_value)
+        .with_storage(address(3), key, initial_value)
+
+        //  [call, call, call, revert, return, return]
+        //  refund = 4800 + 4800 + 0 = 9600
+        .with_contract_deployed2(address(4), sstore_callreturn_contract(5, key, U256::zero()), U256::zero())
+        .with_contract_deployed2(address(5), sstore_callreturn_contract(6, key, U256::zero()), U256::zero())
+        .with_contract_deployed2(address(6), sstore_revert_contract(key, U256::zero()), U256::zero())
+        .with_storage(address(4), key, initial_value)
+        .with_storage(address(5), key, initial_value)
+        .with_storage(address(6), key, initial_value)
+
+        //  [call, call, call, return, revert, return]
+        //  refund = 4800 + 0 + 0 = 4800
+        .with_contract_deployed2(address(7), sstore_callreturn_contract(8, key, U256::zero()), U256::zero())
+        .with_contract_deployed2(address(8), sstore_callrevert_contract(9, key, U256::zero()), U256::zero())
+        .with_contract_deployed2(address(9), sstore_return_contract(key, U256::zero()), U256::zero())
+        .with_storage(address(7), key, initial_value)
+        .with_storage(address(8), key, initial_value)
+        .with_storage(address(9), key, initial_value)
+
+        //  [call, call, call, return, return, revert]
+        //  refund = 0 + 0 + 0 = 0
+        .with_contract_deployed2(address(10), sstore_callrevert_contract(11, key, U256::zero()), U256::zero())
+        .with_contract_deployed2(address(11), sstore_callreturn_contract(12, key, U256::zero()), U256::zero())
+        .with_contract_deployed2(address(12), sstore_return_contract(key, U256::zero()), U256::zero())
+        .with_storage(address(10), key, initial_value)
+        .with_storage(address(11), key, initial_value)
+        .with_storage(address(12), key, initial_value)
+        ;
+
+    let code = Code::builder()
+        .append_code(&mut call_code(1, 0))
+        .append_code(&mut call_code(4, 0))
+        .append_code(&mut call_code(7, 0))
+        .append_code(&mut call_code(10, 0))
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::RETURN)
+        .clone();
+
+    let result = tester.run_code(code);
+    result.expect_status(StatusCode::Success)
+        .expect_storage(address(1), key, U256::zero())
+        .expect_storage(address(2), key, U256::zero())
+        .expect_storage(address(3), key, U256::zero())
+
+        .expect_storage(address(4), key, U256::zero())
+        .expect_storage(address(5), key, U256::zero())
+        .expect_storage(address(6), key, initial_value)
+
+        .expect_storage(address(7), key, U256::zero())
+        .expect_storage(address(8), key, initial_value)
+        .expect_storage(address(9), key, initial_value)
+
+        .expect_storage(address(10), key, initial_value)
+        .expect_storage(address(11), key, initial_value)
+        .expect_storage(address(12), key, initial_value)
+        .expect_gas_refund(28800)
+        ;
+}
 
 // #[test]
 // fn test_reverted_create() {
