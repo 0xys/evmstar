@@ -30,8 +30,8 @@ result.expect_status(StatusCode::Success)
 - [x] return
 - [x] storage opcode (sload, sstore)
 - [x] context opcode
-- [ ] call (in progress)
-- [ ] revert
+- [x] call
+- [x] revert
 - [ ] delegatecall, staticcall, callcode
 - [ ] create
 - [ ] create2
