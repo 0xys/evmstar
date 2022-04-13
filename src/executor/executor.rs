@@ -317,6 +317,7 @@ impl Executor {
 
                 child.is_staticcall = parent.is_staticcall;    // child succeeds `is_static` flag
                 child.snapshot = params.snapshot;
+                child.depth = parent.depth + 1; // increment depth
 
                 child
             },

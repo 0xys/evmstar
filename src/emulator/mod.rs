@@ -1,4 +1,4 @@
-use std::{rc::Rc, cell::RefCell};
+use std::{rc::Rc, cell::RefCell, ops::FnOnce};
 
 use bytes::Bytes;
 use ethereum_types::{Address, U256};
@@ -104,6 +104,10 @@ impl EvmEmulator {
     pub fn with_default_gas<'a>(&'a mut self) -> &'a mut Self {
         self.scope.gas_limit = i32::max_value() as i64;
         self.scope.gas_left = i32::max_value() as i64;
+        self
+    }
+    pub fn mutate_scope<'a>(&'a mut self, apply: impl FnOnce(&mut CallScope)) -> &'a mut Self {
+        apply(&mut self.scope);
         self
     }
 

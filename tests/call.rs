@@ -608,3 +608,42 @@ fn test_transfer_gas_by_revisions() {
         }
     }
 }
+
+#[test]
+fn test_exceed_call_depth() {
+    let code = Code::builder()
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::PUSH32)
+        .append(U256::zero())
+        .append(OpCode::PUSH20)
+        .append(address(0xdd))
+        .append(OpCode::GAS)
+        .append(OpCode::CALL)
+        .append(OpCode::PUSH1)
+        .append(0x20)
+        .append(OpCode::PUSH1)
+        .append(0x00)
+        .append(OpCode::RETURN)
+        .clone();
+    
+    let mut emulator = EvmEmulator::new_stateful_with(get_default_context());
+
+    emulator
+        .with_default_gas()
+        .mutate_scope(|s| {
+            s.depth = 1024;
+        });
+    
+    let result = emulator.run_code(code);
+
+    result.expect_status(StatusCode::Failure(FailureKind::CallDepthExceeded))
+        .expect_output("");
+
+}

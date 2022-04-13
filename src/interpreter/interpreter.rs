@@ -976,6 +976,10 @@ impl Interpreter {
                     return Err(FailureKind::StaticModeViolation);
                 }
 
+                if scope.depth >= 1024 {
+                    return Err(FailureKind::CallDepthExceeded)
+                }
+
                 let static_cost = 
                     if exec_context.revision >= Revision::Berlin {
                         0
