@@ -1,14 +1,18 @@
 use ethereum_types::{Address, U256};
 use bytes::Bytes;
 
+use crate::executor::journal::Snapshot;
 use crate::host::Host;
+use crate::model::code::Code;
 use crate::model::evmc::{
     Message, Output, TxContext, AccessStatus, StatusCode, StorageStatus
 };
 
+use super::stateful::Account;
+
 /// host without no persistent storage
 pub struct TransientHost {
-    context: TxContext
+    context: TxContext,
 }
 
 impl TransientHost {
@@ -24,14 +28,13 @@ impl TransientHost {
                 gas_limit: 0,
                 gas_price: U256::zero(),
                 origin: Address::zero(),
-    
-            }
+            },
         }
     }
 
-    pub fn new_with_context(context: TxContext) -> Self {
+    pub fn new_with(context: TxContext) -> Self {
         TransientHost{
-            context: context
+            context: context,
         }
     }
 }
@@ -83,6 +86,24 @@ impl Host for TransientHost {
         AccessStatus::Warm
     }
 
+    fn add_account(&mut self, address: Address, account: Account) {
+        
+    }
+    fn debug_get_storage(&self, address: Address, key: U256) -> U256 {
+        U256::zero()
+    }
+    fn debug_set_storage(&mut self, address: Address, key: U256, new_value: U256) {
+
+    }
+    fn debug_set_storage_as_warm(&mut self) {
+
+    }
+    fn debug_deploy_contract(&mut self, address_hex: &str, code: Code, balance: U256) {
+
+    }
+    fn debug_deploy_contract2(&mut self, address: Address, code: Code, balance: U256) {
+        
+    }
 
     fn get_blockhash(&self, height: usize) -> U256 {
         U256::from(0x0101)
@@ -94,6 +115,15 @@ impl Host for TransientHost {
 
     }
     fn subtract_balance(&mut self, address: Address, amount: U256){
+
+    }
+    fn take_snapshot(&self) -> Snapshot {
+        Snapshot::default()
+    }
+    fn rollback(&mut self, snapshot: &Snapshot){
+        
+    }
+    fn force_update_storage(&mut self, address: Address, key: U256, value: U256){
 
     }
 }

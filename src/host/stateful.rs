@@ -5,6 +5,7 @@ use std::{
     sync::Mutex,
 };
 
+use crate::executor::journal::{Journal, Snapshot, Sign};
 use crate::host::Host;
 use crate::model::code::Code;
 use crate::model::evmc::{
@@ -87,6 +88,7 @@ pub struct StatefulHost {
     accounts: HashMap<Address, Account>,
     recorded: Mutex<Records>,
     is_always_warm: bool,
+    journal: Journal,
 }
 
 impl StatefulHost {
@@ -106,6 +108,7 @@ impl StatefulHost {
             accounts: Default::default(),
             recorded: Mutex::default(),
             is_always_warm: false,
+            journal: Journal::default(),
         }
     }
 
@@ -115,6 +118,7 @@ impl StatefulHost {
             accounts: Default::default(),
             recorded: Mutex::default(),
             is_always_warm: false,
+            journal: Journal::default(),
         }
     }
 }
@@ -161,6 +165,16 @@ impl StatefulHost {
         let address = Address::from_slice(&dst);
         self.accounts.insert(address, account);
     }
+    pub fn debug_deploy_contract2(&mut self, address: Address, code: Code, balance: U256) {
+        let account = Account {
+            balance,
+            code: code.0.into(),
+            code_hash: U256::from(0x123456),
+            nonce: 0,
+            storage: Default::default(),
+        };
+        self.accounts.insert(address, account);
+    }
 }
 
 #[allow(unused_variables)]
@@ -197,6 +211,8 @@ impl Host for StatefulHost {
             .storage
             .entry(key)
             .or_default();
+        
+        self.journal.record_storage(address, key, value.current_value);
 
         // Follow https://eips.ethereum.org/EIPS/eip-1283 specification.
         if value.current_value == new_value {
@@ -339,6 +355,58 @@ impl Host for StatefulHost {
         access_status
     }
 
+    fn add_account(&mut self, address: Address, account: Account) {
+        self.accounts.insert(address, account);
+    }
+    fn debug_get_storage(&self, address: Address, key: U256) -> U256 {
+        self.accounts
+            .get(&address)
+            .and_then(|account| account.storage.get(&key).map(|value| value.current_value))
+            .unwrap_or_else(U256::zero)
+    }
+    fn debug_set_storage(&mut self, address: Address, key: U256, new_value: U256) {
+        let value = self
+            .accounts
+            .entry(address)
+            .or_default()
+            .storage
+            .entry(key)
+            .or_default();
+
+        value.original_value = new_value;
+        value.current_value = new_value;
+    }
+    fn debug_set_storage_as_warm(&mut self) {
+        self.is_always_warm = true;
+    }
+    fn debug_deploy_contract(&mut self, address_hex: &str, code: Code, balance: U256) {
+        let mut dst = [0u8; 20];
+        let hex = decode(address_hex).unwrap();
+        for i in 0..hex.len() {
+            dst[hex.len() - 1 - i] = hex[hex.len() - 1 - i];
+        }
+
+        let account = Account {
+            balance,
+            code: code.0.into(),
+            code_hash: U256::from(0x123456),
+            nonce: 0,
+            storage: Default::default(),
+        };
+        let address = Address::from_slice(&dst);
+        self.accounts.insert(address, account);
+    }
+    fn debug_deploy_contract2(&mut self, address: Address, code: Code, balance: U256) {
+        let account = Account {
+            balance,
+            code: code.0.into(),
+            code_hash: U256::from(0x123456),
+            nonce: 0,
+            storage: Default::default(),
+        };
+        self.accounts.insert(address, account);
+    }
+
     fn get_blockhash(&self, height: usize) -> U256 {
         U256::from(height)
     }
@@ -358,6 +426,7 @@ impl Host for StatefulHost {
             .or_default();
         
         account.balance += amount;
+        self.journal.record_balance_delta(address, Sign::Plus, amount);
     }
     fn subtract_balance(&mut self, address: Address, amount: U256){
         let account = self
@@ -366,5 +435,49 @@ impl Host for StatefulHost {
             .or_default();
         
         account.balance -= amount;
+        self.journal.record_balance_delta(address, Sign::Minus, amount);
+    }
+    fn take_snapshot(&self) -> Snapshot {
+        Snapshot {
+            storage_snapshot: self.journal.storage_log.len(),
+            balance_snapshot: self.journal.balance_log.len(),
+        }
+    }
+    fn rollback(&mut self, snapshot: &Snapshot) {
+        // rollback storage delta
+        let length = self.journal.storage_log.len();
+        for _ in 0..length - snapshot.storage_snapshot {
+            if let Some(delta) = self.journal.storage_log.pop() {
+                self.force_update_storage(delta.address, delta.key, delta.previous);
+            }
+        }
+
+        // rollback balance delta
+        let length = self.journal.balance_log.len();
+        for _ in 0..length - snapshot.balance_snapshot {
+            if let Some(delta) = self.journal.balance_log.pop() {
+                let account = self
+                    .accounts
+                    .entry(delta.address)
+                    .or_default();
+                
+                // undo balance delta
+                match delta.sign {
+                    Sign::Plus => account.balance -= delta.amount,
+                    Sign::Minus => account.balance += delta.amount,
+                    _ => ()
+                }
+            }
+        }
+    }
+    fn force_update_storage(&mut self, address: Address, key: U256, new_value: U256) {
+        let value = self
+            .accounts
+            .entry(address)
+            .or_default()
+            .storage
+            .entry(key)
+            .or_default();
+        value.current_value = new_value;
     }
 }

@@ -64,6 +64,10 @@ impl AccessList {
         }
         count
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
 }
 
 
@@ -113,6 +117,19 @@ impl Output {
             create_address: None,
             data: Bytes::default(),
             size: 0,
+            gas_refund: 0,
+            effective_gas_refund: 0,
+        }
+    }
+
+    pub fn new_revert(gas_left: i64, data: Bytes) -> Self {
+        let size = data.len();
+        Output {
+            gas_left: gas_left,
+            status_code: StatusCode::Failure(FailureKind::Revert),
+            create_address: None,
+            data: data,
+            size: size,
             gas_refund: 0,
             effective_gas_refund: 0,
         }
@@ -183,6 +200,22 @@ pub struct TxContext {
     pub difficulty: U256,
     pub chain_id: U256,
     pub base_fee: U256,
+}
+
+impl Default for TxContext {
+    fn default() -> Self {
+        TxContext {
+            gas_price: U256::default(),
+            origin: Address::from_low_u64_be(0),
+            coinbase: Address::from_low_u64_be(0),
+            block_number: 0,
+            block_timestamp: 0,
+            gas_limit: i64::max_value(),
+            difficulty: U256::default(),
+            chain_id: U256::from(0),
+            base_fee: U256::from(0),
+        }
+    }
 }
 
 /// https://evmc.ethereum.org/group__EVMC.html#ga9f71195f3873f9979d81d7a5e1b3aaf0

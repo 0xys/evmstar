@@ -18,6 +18,11 @@ impl Code {
             0: vec![]
         }
     }
+    pub fn empty() -> Self {
+        Self {
+            0: vec![]
+        }
+    }
 
     pub fn append_code<'a>(&'a mut self, code: &mut Code) -> &'a mut Self {
         self.0.append(&mut code.0);

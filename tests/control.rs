@@ -1,6 +1,9 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use bytes::Bytes;
 
-use evmstar::host::host::TransientHost;
+use evmstar::host::transient::TransientHost;
 use evmstar::executor::executor::Executor;
 #[allow(unused_imports)]
 use evmstar::model::{
@@ -22,7 +25,8 @@ fn consumed_gas(amount: i64) -> i64 {
 #[test]
 pub fn test_pc() {
     let host = TransientHost::new();
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -55,7 +59,8 @@ pub fn test_pc() {
 #[test]
 pub fn test_jump() {
     let host = TransientHost::new();
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -90,7 +95,8 @@ pub fn test_jump() {
 #[test]
 pub fn test_jump_bad() {
     let host = TransientHost::new();
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -123,7 +129,8 @@ pub fn test_jump_bad() {
 #[test]
 pub fn test_jumpi() {
     let host = TransientHost::new();
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -160,7 +167,8 @@ pub fn test_jumpi() {
 #[test]
 pub fn test_jumpi_condition_unmet() {
     let host = TransientHost::new();
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder
@@ -197,7 +205,8 @@ pub fn test_jumpi_condition_unmet() {
 #[test]
 pub fn test_jumpi_bad() {
     let host = TransientHost::new();
-    let mut executor = Executor::new_with_tracing(Box::new(host));
+    let host = Rc::new(RefCell::new(host));
+    let mut executor = Executor::new_with_tracing(host.clone());
     let mut builder = Code::builder();
 
     let code = builder

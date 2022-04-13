@@ -1,30 +1,17 @@
-use bytes::Bytes;
 use ethereum_types::{U256, Address};
-use evmstar::model::evmc::AccessList;
-
-use evmstar::host::stateful::{
-    StatefulHost,
-};
-use evmstar::executor::{
-    callstack::CallScope,
-    executor::Executor,
-};
-#[allow(unused_imports)]
 use evmstar::model::{
     code::{
         Code, Append,
     },
     opcode::OpCode,
     evmc::{
-        StatusCode, FailureKind,
+        StatusCode,
         TxContext,
     },
     revision::Revision,
 };
+use evmstar::emulator::EvmEmulator;
 
-fn consumed_gas(amount: i64) -> i64 {
-    i64::max_value() - amount
-}
 fn address_0() -> Address {
     Address::from_low_u64_be(0)
 }
@@ -58,89 +45,71 @@ fn get_default_context() -> TxContext {
 #[test]
 fn test_eip2930_nocode() {
     {
-        let host = StatefulHost::new_with(get_default_context());
-
-        let context = CallScope::default();
-        let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
+        let mut tester = EvmEmulator::new_stateful_with(get_default_context());
+        let result = tester
+            .with_default_gas()
+            .add_accessed_account(address_0())
+            .enable_execution_cost()
+            .run_as(Revision::Berlin);
         
-        let mut access_list = AccessList::default();
-        access_list.add_account(address_0());
-        let output = executor.execute_with_access_list(context, access_list);
-
-        assert_eq!(StatusCode::Success, output.status_code);
-        assert_eq!(Bytes::default(), output.data);
-        assert_eq!(21000 + 2400, consumed_gas(output.gas_left));
+        result.expect_status(StatusCode::Success)
+            .expect_output("")
+            .expect_gas(21000 + 2400);
     }
     {
-        let host = StatefulHost::new_with(get_default_context());
-
-        let context = CallScope::default();
-        let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
+        let mut tester = EvmEmulator::new_stateful_with(get_default_context());
+        let result = tester
+            .with_default_gas()
+            .add_accessed_account(address_0())
+            .add_accessed_account(address_0())  // dupulicate costs
+            .add_accessed_account(address_1())
+            .enable_execution_cost()
+            .run_as(Revision::Berlin);
         
-        let mut access_list = AccessList::default();
-        access_list.add_account(address_0());
-        access_list.add_account(address_0());
-        access_list.add_account(address_1());
-        let output = executor.execute_with_access_list(context, access_list);
-
-        assert_eq!(StatusCode::Success, output.status_code);
-        assert_eq!(Bytes::default(), output.data);
-        assert_eq!(21000 + 2400*3, consumed_gas(output.gas_left));
+        result.expect_status(StatusCode::Success)
+            .expect_output("")
+            .expect_gas(21000 + 2400*3);
     }
 }
 
 #[test]
 fn test_eip2930_nocode_storage() {
     {
-        let host = StatefulHost::new_with(get_default_context());
-        let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
+        let mut tester = EvmEmulator::new_stateful_with(get_default_context());
+        let result = tester
+            .with_default_gas()
+            .add_accessed_account(address_0())
+            .add_accessed_account(address_0())  // dupulicate costs
+            .add_accessed_account(address_1())
+            .add_accessed_storage(address_0(), U256::zero())
+            .enable_execution_cost()
+            .run_as(Revision::Berlin);
         
-        let mut access_list = AccessList::default();
-        access_list.add_account(address_0());
-        access_list.add_account(address_0());
-        access_list.add_account(address_1());
-        access_list.add_storage(address_0(), U256::from(0));
-    
-        let context = CallScope::default();
-        let output = executor.execute_with_access_list(context, access_list);
-    
-        assert_eq!(StatusCode::Success, output.status_code);
-        assert_eq!(Bytes::default(), output.data);
-        assert_eq!(21000 + 2400*3 + 1900, consumed_gas(output.gas_left));
+        result.expect_status(StatusCode::Success)
+            .expect_output("")
+            .expect_gas(21000 + 2400*3 + 1900);
     }
     {
-        let host = StatefulHost::new_with(get_default_context());
-        let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
+        let mut tester = EvmEmulator::new_stateful_with(get_default_context());
+        let result = tester
+            .with_default_gas()
+            .add_accessed_account(address_0())
+            .add_accessed_account(address_0())  // dupulicate costs
+            .add_accessed_account(address_1())
+            .add_accessed_storage(address_0(), U256::zero())
+            .add_accessed_storage(address_2(), U256::zero())
+            .enable_execution_cost()
+            .run_as(Revision::Berlin);
         
-        let mut access_list = AccessList::default();
-        access_list.add_account(address_0());
-        access_list.add_account(address_0());
-        access_list.add_account(address_1());
-        access_list.add_storage(address_0(), U256::from(0));
-        access_list.add_storage(address_2(), U256::from(0));
-    
-        let context = CallScope::default();
-        let output = executor.execute_with_access_list(context, access_list);
-    
-        assert_eq!(StatusCode::Success, output.status_code);
-        assert_eq!(Bytes::default(), output.data);
-        assert_eq!(21000 + 2400*4 + 1900*2, consumed_gas(output.gas_left));
+        result.expect_status(StatusCode::Success)
+            .expect_output("")
+            .expect_gas(21000 + 2400*4 + 1900*2);
     }
 }
 
 #[test]
 fn test_eip2930() {
-    let host = StatefulHost::new_with(get_default_context());
-    let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
-    
-    let mut access_list = AccessList::default();
-    access_list.add_account(address_default());
-    access_list.add_account(address_default());
-    access_list.add_account(address_ext());
-    access_list.add_storage(address_default(), U256::from(0));
-
-    let mut builder = Code::builder();
-    let code = builder
+    let code = Code::builder()
         .append(OpCode::PUSH1)
         .append(0)
         .append(OpCode::SLOAD)  // warm
@@ -160,17 +129,8 @@ fn test_eip2930() {
         .append(OpCode::PUSH4)
         .append("eeeeeeee")
         .append(OpCode::EXTCODESIZE) // cold
-        ;
-
-    let mut context = CallScope::default();
-    context.to = address_default();
-    context.code = code.clone();
-
-    let output = executor.execute_with_access_list(context, access_list);
-
-    assert_eq!(StatusCode::Success, output.status_code);
-    assert_eq!(Bytes::default(), output.data);
-
+        .clone();
+    
     let expected = 21000
         + 2400*3    // account access * 3
         + 1900      // storage access * 1
@@ -181,21 +141,26 @@ fn test_eip2930() {
         + 100       // warm extcodesize
         + 2600      // cold extcodesize
         ;
-    assert_eq!(expected, consumed_gas(output.gas_left));
+    
+    let mut tester = EvmEmulator::new_stateful_with(get_default_context());
+    let result = tester
+        .with_to(address_default())
+        .with_default_gas()
+        .add_accessed_account(address_default())
+        .add_accessed_account(address_default())  // dupulicate costs
+        .add_accessed_account(address_ext())
+        .add_accessed_storage(address_default(), U256::zero())
+        .enable_execution_cost()
+        .run_code_as(code, Revision::Berlin);
+    
+    result.expect_status(StatusCode::Success)
+        .expect_output("")
+        .expect_gas(expected);
 }
 
 #[test]
 fn test_eip2930_sstore() {
-    let mut host = StatefulHost::new_with(get_default_context());
-    host.debug_set_storage(address_default(), U256::from(0), U256::from(1));    // add original value
-    
-    let mut executor = Executor::new_with_execution_cost(Box::new(host), true, Revision::Berlin);
-    
-    let mut access_list = AccessList::default();
-    access_list.add_storage(address_default(), U256::from(0));  // make it warm
-
-    let mut builder = Code::builder();
-    let code = builder
+    let code = Code::builder()
         .append(OpCode::PUSH1)
         .append(2)  // new value
         .append(OpCode::PUSH1)
@@ -207,16 +172,7 @@ fn test_eip2930_sstore() {
         .append(OpCode::PUSH1)
         .append(1)  // cold key
         .append(OpCode::SSTORE)  // cold
-        ;
-    
-    let mut context = CallScope::default();
-    context.to = address_default();
-    context.code = code.clone();
-
-    let output = executor.execute_with_access_list(context, access_list);
-
-    assert_eq!(StatusCode::Success, output.status_code);
-    assert_eq!(Bytes::default(), output.data);
+        .clone();
 
     let expected = 21000
         + 1900      // storage access * 1
@@ -225,5 +181,17 @@ fn test_eip2930_sstore() {
         + 2900      // warm sstore
         + 22100     // cold sstore
         ;
-    assert_eq!(expected, consumed_gas(output.gas_left));
+
+    let mut tester = EvmEmulator::new_stateful_with(get_default_context());
+    let result = tester
+        .with_to(address_default())
+        .with_default_gas()
+        .with_storage(address_default(), U256::zero(), U256::from(0x01))
+        .add_accessed_storage(address_default(), U256::zero())
+        .enable_execution_cost()
+        .run_code_as(code, Revision::Berlin);
+    
+    result.expect_status(StatusCode::Success)
+        .expect_output("")
+        .expect_gas(expected);
 }

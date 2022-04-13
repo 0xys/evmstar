@@ -11,6 +11,10 @@ use crate::model::{
 use crate::interpreter::{
     stack::{Stack, Memory, Calldata}
 };
+use crate::executor::{
+    journal::Snapshot,
+};
+
 
 #[derive(Clone, Debug, Default)]
 pub struct ExecutionContext {
@@ -37,6 +41,9 @@ pub struct CallScope {
     pub gas_left: i64,
     pub ret_offset: usize,
     pub ret_size: usize,
+    pub snapshot: Snapshot,
+    pub refund_counter: i64,
+    pub depth: i64,
 }
 impl Default for CallScope {
     fn default() -> Self {
@@ -56,6 +63,9 @@ impl Default for CallScope {
             gas_left: i64::max_value(),
             ret_offset: 0,
             ret_size: 0,
+            snapshot: Snapshot::default(),
+            refund_counter: 0,
+            depth: 0,
         }
     }
 }

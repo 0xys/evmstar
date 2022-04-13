@@ -1,7 +1,8 @@
+use bytes::Bytes;
 use ethereum_types::{
     U256, U512
 };
-use std::cmp::min;
+use std::{cmp::min, cell::{RefCell}, rc::Rc};
 
 use crate::{model::{
     opcode::OpCode,
@@ -33,7 +34,7 @@ use crate::utils::{
     address_to_u256, u256_to_address,
 };
 
-use super::{CallParams, CallKind};
+use super::{CallParams, CallKind, ExitKind};
 
 #[derive(Clone, Debug)]
 pub struct Interpreter {
@@ -66,7 +67,7 @@ impl Interpreter {
         resume: Resume,
         scope: &mut CallScope,
         exec_context: &mut ExecutionContext,
-        host: &mut Box<dyn Host>
+        host: Rc<RefCell<dyn Host>>
     ) -> Result<Interrupt, FailureKind> {
         let mut old_gas_left = scope.gas_left;
         
@@ -82,7 +83,7 @@ impl Interpreter {
 
             let op_byte = match scope.code.0.get(scope.pc) {
                 Some(num) => *num,
-                None => return Ok(Interrupt::Stop(scope.gas_left))
+                None => return Ok(Interrupt::Exit(scope.gas_left, Bytes::default(), ExitKind::Stop))
             };
 
             if let Some(opcode) = OpCode::from_u8(op_byte) {
@@ -99,7 +100,7 @@ impl Interpreter {
                     continue;
                 }
                 
-                match self.next_instruction(&opcode, scope, exec_context, host)? {
+                match self.next_instruction(&opcode, scope, exec_context, host.clone())? {
                     None => (),
                     Some(i) => {
                         if i == Interrupt::Jump {
@@ -148,14 +149,15 @@ impl Interpreter {
         opcode: &OpCode,
         scope: &mut CallScope,
         exec_context: &mut ExecutionContext,
-        host: &mut Box<dyn Host>,
+        host: Rc<RefCell<dyn Host>>,
     ) -> Result<Option<Interrupt>, FailureKind> {
+        let mut host = host.borrow_mut();
         let stack = &mut scope.stack;
         let memory = &mut scope.memory;
 
         match opcode {
             OpCode::STOP => {
-                Ok(Some(Interrupt::Stop(scope.gas_left)))
+                Ok(Some(Interrupt::Exit(scope.gas_left, Bytes::default(), ExitKind::Stop)))
             },
             OpCode::ADD => {
                 Self::consume_constant_gas(&mut scope.gas_left, 3)?;
@@ -831,9 +833,10 @@ impl Interpreter {
                     //  pre-berlin is always warm
                     AccessStatus::Warm
                 };
+
                 let storage_status = host.set_storage(scope.to, key, new_value);
 
-                exec_context.refund_counter += calc_sstore_gas_refund(new_value, exec_context.revision, storage_status);
+                scope.refund_counter += calc_sstore_gas_refund(new_value, exec_context.revision, storage_status);
                 let gas = calc_sstore_gas_cost(new_value, exec_context.revision, access_status, storage_status);
                 Self::consume_constant_gas(&mut scope.gas_left, gas)?;
 
@@ -875,6 +878,12 @@ impl Interpreter {
                 Self::consume_constant_gas(&mut scope.gas_left, 2)?;
                 let len = U256::from(memory.0.len());
                 stack.push(len)?;
+                Ok(None)
+            },
+            OpCode::GAS => {
+                Self::consume_constant_gas(&mut scope.gas_left, 2)?;    // amount of available gas after this instruction
+                let gas_left = U256::from(scope.gas_left);
+                stack.push(gas_left)?;
                 Ok(None)
             },
             OpCode::JUMPDEST => {
@@ -967,6 +976,10 @@ impl Interpreter {
                     return Err(FailureKind::StaticModeViolation);
                 }
 
+                if scope.depth >= 1024 {
+                    return Err(FailureKind::CallDepthExceeded)
+                }
+
                 let static_cost = 
                     if exec_context.revision >= Revision::Berlin {
                         0
@@ -1001,29 +1014,31 @@ impl Interpreter {
                     if host.account_exists(address){
                         0
                     }else{
-                        25000
+                        if !value.is_zero() { 25000 } else { 0 }
                     };
 
-                let caller_balance = host.get_balance(scope.caller);
+                let caller_balance = host.get_balance(scope.to);
                 if caller_balance < value {
                     return Err(FailureKind::InsufficientBalance);
                 }
-                host.subtract_balance(scope.caller, value);
+                let snapshot = host.take_snapshot();
+
+                host.subtract_balance(scope.to, value);
                 host.add_balance(address, value);
 
                 let memory_expansion_cost = args_cost + ret_cost;
                 let extra_gas = address_access_cost + positive_value_cost + value_to_empty_cost;
+                Self::consume_constant_gas(&mut scope.gas_left, static_cost + extra_gas + memory_expansion_cost)?;
 
                 let gas =
                     if exec_context.revision < Revision::Tangerine {
                         gas
                     }else{
                         // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-150.md
-                        min(gas, Self::max_call_gas(scope.gas_left - extra_gas))
+                        min(gas, Self::max_call_gas(scope.gas_left))
                     };
 
-                let total_cost = static_cost + gas + extra_gas + memory_expansion_cost;
-                Self::consume_constant_gas(&mut scope.gas_left, total_cost)?;
+                Self::consume_constant_gas(&mut scope.gas_left, gas)?;
 
                 // gas stipend is added out of thin air
                 let gas = gas + if !value.is_zero() { 2300 } else { 0 };
@@ -1037,31 +1052,32 @@ impl Interpreter {
                     args_size,
                     ret_offset,
                     ret_size,
+                    snapshot,
                 };
 
                 Ok(Some(Interrupt::Call(params)))
             },
             OpCode::CALLCODE => {
-                let gas = scope.stack.pop()?;
-                let address = scope.stack.pop()?;
-                let address = u256_to_address(address);
-                let value = scope.stack.pop()?;
-                let args_offset = scope.stack.pop()?;
-                let args_size = scope.stack.pop()?;
-                let ret_offset = scope.stack.pop()?;
-                let ret_size = scope.stack.pop()?;
-                let params = CallParams {
-                    kind: CallKind::CallCode,
-                    gas: gas.as_u32() as i64,
-                    address,
-                    value,
-                    args_offset: args_offset.as_usize(),
-                    args_size: args_size.as_usize(),
-                    ret_offset: ret_offset.as_usize(),
-                    ret_size: ret_size.as_usize(),
-                };
+                // let gas = scope.stack.pop()?;
+                // let address = scope.stack.pop()?;
+                // let address = u256_to_address(address);
+                // let value = scope.stack.pop()?;
+                // let args_offset = scope.stack.pop()?;
+                // let args_size = scope.stack.pop()?;
+                // let ret_offset = scope.stack.pop()?;
+                // let ret_size = scope.stack.pop()?;
+                // let params = CallParams {
+                //     kind: CallKind::CallCode,
+                //     gas: gas.as_u32() as i64,
+                //     address,
+                //     value,
+                //     args_offset: args_offset.as_usize(),
+                //     args_size: args_size.as_usize(),
+                //     ret_offset: ret_offset.as_usize(),
+                //     ret_size: ret_size.as_usize(),
+                // };
 
-                Ok(Some(Interrupt::Call(params)))
+                Ok(None)
             },
 
             OpCode::RETURN => {
@@ -1070,7 +1086,7 @@ impl Interpreter {
                 let (gas_consumed, data) = ret(offset, size, memory, scope.gas_left)?;
                 scope.gas_left -= gas_consumed;
                 exec_context.return_data_buffer = data.clone();
-                Ok(Some(Interrupt::Return(scope.gas_left, data)))
+                Ok(Some(Interrupt::Exit(scope.gas_left, data, ExitKind::Return)))
             },
 
             OpCode::DELEGATECALL => {
@@ -1078,25 +1094,25 @@ impl Interpreter {
                 if exec_context.revision < Revision::Homestead {
                     return Err(FailureKind::InvalidInstruction);
                 }
-                let gas = scope.stack.pop()?;
-                let address = scope.stack.pop()?;
-                let address = u256_to_address(address);
-                let args_offset = scope.stack.pop()?;
-                let args_size = scope.stack.pop()?;
-                let ret_offset = scope.stack.pop()?;
-                let ret_size = scope.stack.pop()?;
-                let params = CallParams {
-                    kind: CallKind::DelegateCall,
-                    gas: gas.as_u32() as i64,
-                    address,
-                    value: U256::zero(),
-                    args_offset: args_offset.as_usize(),
-                    args_size: args_size.as_usize(),
-                    ret_offset: ret_offset.as_usize(),
-                    ret_size: ret_size.as_usize(),
-                };
+                // let gas = scope.stack.pop()?;
+                // let address = scope.stack.pop()?;
+                // let address = u256_to_address(address);
+                // let args_offset = scope.stack.pop()?;
+                // let args_size = scope.stack.pop()?;
+                // let ret_offset = scope.stack.pop()?;
+                // let ret_size = scope.stack.pop()?;
+                // let params = CallParams {
+                //     kind: CallKind::DelegateCall,
+                //     gas: gas.as_u32() as i64,
+                //     address,
+                //     value: U256::zero(),
+                //     args_offset: args_offset.as_usize(),
+                //     args_size: args_size.as_usize(),
+                //     ret_offset: ret_offset.as_usize(),
+                //     ret_size: ret_size.as_usize(),
+                // };
 
-                Ok(Some(Interrupt::Call(params)))
+                Ok(None)
             },
             // OpCode::CREATE2 => {
             //     Ok(None)
@@ -1106,30 +1122,35 @@ impl Interpreter {
                 if exec_context.revision < Revision::Byzantium {
                     return Err(FailureKind::InvalidInstruction);
                 }
-                let gas = scope.stack.pop()?;
-                let address = scope.stack.pop()?;
-                let address = u256_to_address(address);
-                let args_offset = scope.stack.pop()?;
-                let args_size = scope.stack.pop()?;
-                let ret_offset = scope.stack.pop()?;
-                let ret_size = scope.stack.pop()?;
-                let params = CallParams {
-                    kind: CallKind::StaticCall,
-                    gas: gas.as_u32() as i64,
-                    address,
-                    value: U256::zero(),
-                    args_offset: args_offset.as_usize(),
-                    args_size: args_size.as_usize(),
-                    ret_offset: ret_offset.as_usize(),
-                    ret_size: ret_size.as_usize(),
-                };
+                // let gas = scope.stack.pop()?;
+                // let address = scope.stack.pop()?;
+                // let address = u256_to_address(address);
+                // let args_offset = scope.stack.pop()?;
+                // let args_size = scope.stack.pop()?;
+                // let ret_offset = scope.stack.pop()?;
+                // let ret_size = scope.stack.pop()?;
+                // let params = CallParams {
+                //     kind: CallKind::StaticCall,
+                //     gas: gas.as_u32() as i64,
+                //     address,
+                //     value: U256::zero(),
+                //     args_offset: args_offset.as_usize(),
+                //     args_size: args_size.as_usize(),
+                //     ret_offset: ret_offset.as_usize(),
+                //     ret_size: ret_size.as_usize(),
+                // };
 
-                Ok(Some(Interrupt::Call(params)))
+                Ok(None)
             },
 
-            // OpCode::REVERT => {
-            //     Ok(None)
-            // },
+            OpCode::REVERT => {
+                let offset = stack.pop()?;
+                let size = stack.pop()?;
+                let (gas_consumed, data) = ret(offset, size, memory, scope.gas_left)?;
+                scope.gas_left -= gas_consumed;
+                exec_context.return_data_buffer = data.clone();
+                Ok(Some(Interrupt::Exit(scope.gas_left, data, ExitKind::Revert)))
+            },
 
             // OpCode::INVALID => {
             //     Ok(None)
@@ -1139,7 +1160,11 @@ impl Interpreter {
             //     Ok(None)
             // },
 
-            _ => Ok(None)
+            _ => {
+                let mes = format!("unknown opcode {:?}", *opcode);
+                println!("{}", mes);
+                Ok(None)
+            }
         }
     }
 
